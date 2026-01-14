@@ -1,0 +1,217 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.25.xsd">
+
+    <changeSet id="001-create-users-table" author="sre-platform">
+        <createTable tableName="users">
+            <column name="id" type="uuid" defaultValueComputed="gen_random_uuid()">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="email" type="varchar(255)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="name" type="varchar(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="avatar_url" type="varchar(500)"/>
+            <column name="created_at" type="timestamp" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="002-create-incidents-table" author="sre-platform">
+        <createTable tableName="incidents">
+            <column name="id" type="uuid" defaultValueComputed="gen_random_uuid()">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="incident_number" type="varchar(50)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="title" type="varchar(500)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="description" type="text">
+                <constraints nullable="false"/>
+            </column>
+            <column name="severity" type="varchar(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="status" type="varchar(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="incident_lead_id" type="uuid">
+                <constraints foreignKeyName="fk_incidents_lead" references="users(id)"/>
+            </column>
+            <column name="reporter_id" type="uuid">
+                <constraints foreignKeyName="fk_incidents_reporter" references="users(id)"/>
+            </column>
+            <column name="created_at" type="timestamp" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="detected_at" type="timestamp"/>
+            <column name="mitigated_at" type="timestamp"/>
+            <column name="resolved_at" type="timestamp"/>
+            <column name="closed_at" type="timestamp"/>
+            <column name="problem_statement" type="text"/>
+            <column name="impact" type="text"/>
+            <column name="causes" type="text"/>
+            <column name="steps_to_resolve" type="text"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="003-create-timeline-events-table" author="sre-platform">
+        <createTable tableName="timeline_events">
+            <column name="id" type="uuid" defaultValueComputed="gen_random_uuid()">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="incident_id" type="uuid">
+                <constraints nullable="false" foreignKeyName="fk_timeline_incident" references="incidents(id)" deleteCascade="true"/>
+            </column>
+            <column name="event_type" type="varchar(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="description" type="text">
+                <constraints nullable="false"/>
+            </column>
+            <column name="user_id" type="uuid">
+                <constraints foreignKeyName="fk_timeline_user" references="users(id)"/>
+            </column>
+            <column name="created_at" type="timestamp" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="metadata" type="jsonb"/>
+        </createTable>
+        <createIndex tableName="timeline_events" indexName="idx_timeline_incident">
+            <column name="incident_id"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="004-create-runbooks-table" author="sre-platform">
+        <createTable tableName="runbooks">
+            <column name="id" type="uuid" defaultValueComputed="gen_random_uuid()">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="service_name" type="varchar(255)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="team_name" type="varchar(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="team_email" type="varchar(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="description" type="text">
+                <constraints nullable="false"/>
+            </column>
+            <column name="monitoring_links" type="jsonb"/>
+            <column name="upstream_services" type="jsonb"/>
+            <column name="downstream_services" type="jsonb"/>
+            <column name="runbook_procedures" type="text"/>
+            <column name="created_at" type="timestamp" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_at" type="timestamp" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="005-create-incident-services-table" author="sre-platform">
+        <createTable tableName="incident_services">
+            <column name="incident_id" type="uuid">
+                <constraints nullable="false" foreignKeyName="fk_incident_services_incident" references="incidents(id)" deleteCascade="true"/>
+            </column>
+            <column name="runbook_id" type="uuid">
+                <constraints nullable="false" foreignKeyName="fk_incident_services_runbook" references="runbooks(id)" deleteCascade="true"/>
+            </column>
+            <column name="created_at" type="timestamp" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addPrimaryKey tableName="incident_services" columnNames="incident_id,runbook_id"/>
+    </changeSet>
+
+    <changeSet id="006-create-postmortems-table" author="sre-platform">
+        <createTable tableName="postmortems">
+            <column name="id" type="uuid" defaultValueComputed="gen_random_uuid()">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="incident_id" type="uuid">
+                <constraints nullable="false" unique="true" foreignKeyName="fk_postmortem_incident" references="incidents(id)" deleteCascade="true"/>
+            </column>
+            <column name="status" type="varchar(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="introduction" type="text"/>
+            <column name="timeline_summary" type="text"/>
+            <column name="root_cause" type="text"/>
+            <column name="impact_analysis" type="text"/>
+            <column name="how_we_fixed_it" type="text"/>
+            <column name="action_items" type="jsonb"/>
+            <column name="lessons_learned" type="text"/>
+            <column name="created_by_id" type="uuid">
+                <constraints foreignKeyName="fk_postmortem_creator" references="users(id)"/>
+            </column>
+            <column name="created_at" type="timestamp" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_at" type="timestamp" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="published_at" type="timestamp"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="007-create-postmortem-images-table" author="sre-platform">
+        <createTable tableName="postmortem_images">
+            <column name="id" type="uuid" defaultValueComputed="gen_random_uuid()">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="postmortem_id" type="uuid">
+                <constraints nullable="false" foreignKeyName="fk_postmortem_images" references="postmortems(id)" deleteCascade="true"/>
+            </column>
+            <column name="image_url" type="varchar(500)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="caption" type="text"/>
+            <column name="section" type="varchar(100)"/>
+            <column name="created_at" type="timestamp" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <createIndex tableName="postmortem_images" indexName="idx_postmortem_images">
+            <column name="postmortem_id"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="008-create-action-items-table" author="sre-platform">
+        <createTable tableName="action_items">
+            <column name="id" type="uuid" defaultValueComputed="gen_random_uuid()">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="incident_id" type="uuid">
+                <constraints nullable="false" foreignKeyName="fk_action_items_incident" references="incidents(id)" deleteCascade="true"/>
+            </column>
+            <column name="description" type="text">
+                <constraints nullable="false"/>
+            </column>
+            <column name="assigned_to_id" type="uuid">
+                <constraints foreignKeyName="fk_action_items_assignee" references="users(id)"/>
+            </column>
+            <column name="completed" type="boolean" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_at" type="timestamp" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <createIndex tableName="action_items" indexName="idx_action_items_incident">
+            <column name="incident_id"/>
+        </createIndex>
+    </changeSet>
+
+</databaseChangeLog>

@@ -1,0 +1,104 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: sre-platform-db
+    environment:
+      POSTGRES_USER: sre_user
+      POSTGRES_PASSWORD: sre_password
+      POSTGRES_DB: sre_platform
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sre_user -d sre_platform"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Liquibase for database migrations
+  liquibase:
+    image: liquibase/liquibase:4.25-alpine
+    container_name: sre-platform-liquibase
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./liquibase:/liquibase/changelog
+    command: >
+      --changelog-file=changelog/db.changelog-master.xml
+      --url=jdbc:postgresql://postgres:5432/sre_platform
+      --username=sre_user
+      --password=sre_password
+      update
+    environment:
+      LIQUIBASE_COMMAND_CHANGELOG_FILE: changelog/db.changelog-master.xml
+      LIQUIBASE_COMMAND_URL: jdbc:postgresql://postgres:5432/sre_platform
+      LIQUIBASE_COMMAND_USERNAME: sre_user
+      LIQUIBASE_COMMAND_PASSWORD: sre_password
+
+  # Next.js Frontend & API
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: sre-platform-frontend
+    depends_on:
+      postgres:
+        condition: service_healthy
+      liquibase:
+        condition: service_completed_successfully
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgresql://sre_user:sre_password@postgres:5432/sre_platform
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      NODE_ENV: development
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/.next
+    command: npm run dev
+
+  # WebSocket Server (Socket.io)
+  websocket:
+    build:
+      context: .
+      dockerfile: Dockerfile.websocket
+    container_name: sre-platform-websocket
+    depends_on:
+      - postgres
+    ports:
+      - "4000:4000"
+    environment:
+      DATABASE_URL: postgresql://sre_user:sre_password@postgres:5432/sre_platform
+      NODE_ENV: development
+    volumes:
+      - ./websocket:/app
+      - /app/node_modules
+
+  # MinIO (S3-compatible storage) - Optional
+  minio:
+    image: minio/minio:latest
+    container_name: sre-platform-minio
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+volumes:
+  postgres_data:
+  minio_data:

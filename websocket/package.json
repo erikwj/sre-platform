@@ -1,0 +1,15 @@
+{
+  "name": "sre-platform-websocket",
+  "version": "1.0.0",
+  "description": "WebSocket server for real-time updates",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "socket.io": "^4.8.1",
+    "pg": "^8.13.1",
+    "dotenv": "^16.4.7"
+  }
+}

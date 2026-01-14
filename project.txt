@@ -1,0 +1,59 @@
+Hackathon Idea Summary: AI-Powered Incident & Postmortem Platform
+Problem Statement
+Currently, incident management and postmortems are disconnected and inefficient:
+
+During incidents: Updates scattered in SharePoint documents, accessible only via email links
+After incidents: Timeline data is discarded; postmortems written from scratch in Azure DevOps/Word
+No learning loop: Patterns across incidents invisible, same issues repeat
+Poor tooling: Azure DevOps lacks necessary fields; Word docs are unstructured
+Teaching burden: Significant time spent teaching people how to write proper postmortems
+
+Solution: Unified Incident-to-Postmortem Platform
+A comprehensive web platform that manages the entire incident lifecycle from live response through postmortem analysis, powered by AI to reduce manual work and surface patterns.
+Core Features
+1. Live Incident Management (replaces SharePoint)
+
+Create incidents with severity, affected services, incident commander
+Shareable link for email notifications
+Real-time timeline updates with timestamps
+Anyone can view; authorized users add updates
+Links to changes, PRs, affected components
+
+2. AI-Powered Postmortem Generation
+
+One-click postmortem creation from incident data
+AI auto-extracts timeline (start, detection, mitigation, resolution times)
+Pre-fills root cause, affected services, linked changes
+Suggests action items based on incident updates
+Support for methodologies: 5 Whys, Swiss Cheese Model
+Real-time coaching as users write
+
+3. Historical Data Import
+
+Drag-and-drop Word document postmortems (.docx)
+AI parses unstructured documents and extracts:
+
+Timeline data
+Root causes
+Action items
+Linked incidents/changes
+
+
+Bulk import capability
+
+4. Pattern Recognition Dashboard
+
+Aggregates all incidents and postmortems
+AI identifies recurring issues (e.g., "Certificate expiry: 8 incidents")
+Visualizes trends: MTTD, MTTR, common failure modes
+Links related incidents for deep-dive analysis
+
+Target Hackathon Pillar
+Reliability - Improves incident response and enables learning from failures to prevent repeat incidents
+Key Value Propositions
+
+Eliminates data loss: Timeline updates become structured, searchable data
+Reduces manual work: 70% of postmortem pre-filled automatically
+Accelerates learning: Pattern recognition surfaces systemic issues
+Improves quality: AI coaching helps teams write better postmortems
+Centralizes knowledge: Single source of truth for all incidents and postmortems

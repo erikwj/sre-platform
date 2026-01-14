@@ -1,0 +1,18 @@
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Copy package files
+COPY websocket/package*.json ./
+
+# Install dependencies
+RUN npm install
+
+# Copy application files
+COPY websocket/ .
+
+# Expose port
+EXPOSE 4000
+
+# Start WebSocket server
+CMD ["node", "server.js"]

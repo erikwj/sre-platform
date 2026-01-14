@@ -1,0 +1,154 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                    String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email                 String         @unique @db.VarChar(255)
+  name                  String         @db.VarChar(255)
+  avatarUrl             String?        @map("avatar_url") @db.VarChar(500)
+  createdAt             DateTime       @default(now()) @map("created_at")
+  
+  incidentsLed          Incident[]     @relation("IncidentLead")
+  incidentsReported     Incident[]     @relation("IncidentReporter")
+  timelineEvents        TimelineEvent[]
+  postmortemsCreated    Postmortem[]
+  actionItemsAssigned   ActionItem[]
+
+  @@map("users")
+}
+
+model Incident {
+  id                String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  incidentNumber    String         @unique @map("incident_number") @db.VarChar(50)
+  title             String         @db.VarChar(500)
+  description       String         @db.Text
+  severity          String         @db.VarChar(20)
+  status            String         @db.VarChar(20)
+  incidentLeadId    String?        @map("incident_lead_id") @db.Uuid
+  reporterId        String?        @map("reporter_id") @db.Uuid
+  createdAt         DateTime       @default(now()) @map("created_at")
+  detectedAt        DateTime?      @map("detected_at")
+  mitigatedAt       DateTime?      @map("mitigated_at")
+  resolvedAt        DateTime?      @map("resolved_at")
+  closedAt          DateTime?      @map("closed_at")
+  problemStatement  String?        @map("problem_statement") @db.Text
+  impact            String?        @db.Text
+  causes            String?        @db.Text
+  stepsToResolve    String?        @map("steps_to_resolve") @db.Text
+  
+  incidentLead      User?          @relation("IncidentLead", fields: [incidentLeadId], references: [id])
+  reporter          User?          @relation("IncidentReporter", fields: [reporterId], references: [id])
+  timelineEvents    TimelineEvent[]
+  postmortem        Postmortem?
+  actionItems       ActionItem[]
+  services          IncidentService[]
+
+  @@map("incidents")
+}
+
+model TimelineEvent {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  incidentId  String    @map("incident_id") @db.Uuid
+  eventType   String    @map("event_type") @db.VarChar(50)
+  description String    @db.Text
+  userId      String?   @map("user_id") @db.Uuid
+  createdAt   DateTime  @default(now()) @map("created_at")
+  metadata    Json?     @db.JsonB
+  
+  incident    Incident  @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  user        User?     @relation(fields: [userId], references: [id])
+
+  @@index([incidentId], name: "idx_timeline_incident")
+  @@map("timeline_events")
+}
+
+model Runbook {
+  id                  String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  serviceName         String            @unique @map("service_name") @db.VarChar(255)
+  teamName            String            @map("team_name") @db.VarChar(255)
+  teamEmail           String            @map("team_email") @db.VarChar(255)
+  description         String            @db.Text
+  monitoringLinks     Json?             @map("monitoring_links") @db.JsonB
+  upstreamServices    Json?             @map("upstream_services") @db.JsonB
+  downstreamServices  Json?             @map("downstream_services") @db.JsonB
+  runbookProcedures   String?           @map("runbook_procedures") @db.Text
+  createdAt           DateTime          @default(now()) @map("created_at")
+  updatedAt           DateTime          @default(now()) @updatedAt @map("updated_at")
+  
+  incidents           IncidentService[]
+
+  @@map("runbooks")
+}
+
+model IncidentService {
+  incidentId  String    @map("incident_id") @db.Uuid
+  runbookId   String    @map("runbook_id") @db.Uuid
+  createdAt   DateTime  @default(now()) @map("created_at")
+  
+  incident    Incident  @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  runbook     Runbook   @relation(fields: [runbookId], references: [id], onDelete: Cascade)
+
+  @@id([incidentId, runbookId])
+  @@map("incident_services")
+}
+
+model Postmortem {
+  id              String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  incidentId      String             @unique @map("incident_id") @db.Uuid
+  status          String             @db.VarChar(20)
+  introduction    String?            @db.Text
+  timelineSummary String?            @map("timeline_summary") @db.Text
+  rootCause       String?            @map("root_cause") @db.Text
+  impactAnalysis  String?            @map("impact_analysis") @db.Text
+  howWeFixedIt    String?            @map("how_we_fixed_it") @db.Text
+  actionItems     Json?              @map("action_items") @db.JsonB
+  lessonsLearned  String?            @map("lessons_learned") @db.Text
+  createdById     String?            @map("created_by_id") @db.Uuid
+  createdAt       DateTime           @default(now()) @map("created_at")
+  updatedAt       DateTime           @default(now()) @updatedAt @map("updated_at")
+  publishedAt     DateTime?          @map("published_at")
+  
+  incident        Incident           @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  createdBy       User?              @relation(fields: [createdById], references: [id])
+  images          PostmortemImage[]
+
+  @@map("postmortems")
+}
+
+model PostmortemImage {
+  id            String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  postmortemId  String      @map("postmortem_id") @db.Uuid
+  imageUrl      String      @map("image_url") @db.VarChar(500)
+  caption       String?     @db.Text
+  section       String?     @db.VarChar(100)
+  createdAt     DateTime    @default(now()) @map("created_at")
+  
+  postmortem    Postmortem  @relation(fields: [postmortemId], references: [id], onDelete: Cascade)
+
+  @@index([postmortemId], name: "idx_postmortem_images")
+  @@map("postmortem_images")
+}
+
+model ActionItem {
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  incidentId    String    @map("incident_id") @db.Uuid
+  description   String    @db.Text
+  assignedToId  String?   @map("assigned_to_id") @db.Uuid
+  completed     Boolean   @default(false)
+  createdAt     DateTime  @default(now()) @map("created_at")
+  
+  incident      Incident  @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  assignedTo    User?     @relation(fields: [assignedToId], references: [id])
+
+  @@index([incidentId], name: "idx_action_items_incident")
+  @@map("action_items")
+}
