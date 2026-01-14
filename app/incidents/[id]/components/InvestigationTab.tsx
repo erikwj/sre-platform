@@ -350,7 +350,7 @@ export function InvestigationTab({ incident, onRefresh }: InvestigationTabProps)
       <div className="bg-white border border-border rounded-lg p-6">
         <div className="flex items-center justify-between mb-6">
           <h3 className="text-sm font-semibold text-text-primary">
-            Activity Timeline
+            Activity Timeline (to and from SNOW)
           </h3>
           <button
             onClick={onRefresh}
