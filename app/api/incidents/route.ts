@@ -123,7 +123,21 @@ export async function GET(request: NextRequest) {
     
     // Transform the result to match expected format
     const incidents = result.rows.map(row => ({
-      ...row,
+      id: row.id,
+      incidentNumber: row.incident_number,
+      title: row.title,
+      description: row.description,
+      severity: row.severity,
+      status: row.status,
+      createdAt: row.created_at,
+      detectedAt: row.detected_at,
+      mitigatedAt: row.mitigated_at,
+      resolvedAt: row.resolved_at,
+      closedAt: row.closed_at,
+      problemStatement: row.problem_statement,
+      impact: row.impact,
+      causes: row.causes,
+      stepsToResolve: row.steps_to_resolve,
       _count: {
         timelineEvents: parseInt(row.timeline_events_count),
         actionItems: parseInt(row.action_items_count),

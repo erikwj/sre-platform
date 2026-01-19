@@ -36,8 +36,8 @@ export default function IncidentsPage() {
 
   const fetchIncidents = async () => {
     try {
-      const url = filter === 'all' 
-        ? '/api/incidents' 
+      const url = filter === 'all'
+        ? '/api/incidents'
         : `/api/incidents?status=${filter}`;
       const response = await fetch(url);
       if (response.ok) {
