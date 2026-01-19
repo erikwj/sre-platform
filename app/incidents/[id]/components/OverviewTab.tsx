@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Edit2, Check, X, Plus, Trash2, UserPlus } from 'lucide-react';
+import { Plus, Trash2, UserPlus } from 'lucide-react';
 
 type Incident = {
   id: string;
@@ -25,13 +25,23 @@ type User = {
 };
 
 export function OverviewTab({ incident, onUpdate, onRefresh }: OverviewTabProps) {
-  const [editingField, setEditingField] = useState<string | null>(null);
-  const [editValue, setEditValue] = useState('');
+  const [problemStatement, setProblemStatement] = useState(incident.problemStatement || '');
+  const [impact, setImpact] = useState(incident.impact || '');
+  const [causes, setCauses] = useState(incident.causes || '');
+  const [stepsToResolve, setStepsToResolve] = useState(incident.stepsToResolve || '');
   const [newAction, setNewAction] = useState('');
   const [isAddingAction, setIsAddingAction] = useState(false);
   const [assigningActionId, setAssigningActionId] = useState<string | null>(null);
   const [availableUsers, setAvailableUsers] = useState<User[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
+
+  // Update local state when incident changes
+  useEffect(() => {
+    setProblemStatement(incident.problemStatement || '');
+    setImpact(incident.impact || '');
+    setCauses(incident.causes || '');
+    setStepsToResolve(incident.stepsToResolve || '');
+  }, [incident]);
 
   // Fetch available users when assignment dropdown is opened
   useEffect(() => {
@@ -55,22 +65,9 @@ export function OverviewTab({ incident, onUpdate, onRefresh }: OverviewTabProps)
     }
   };
 
-  const startEdit = (field: string, currentValue: string) => {
-    console.log('[DEBUG] startEdit called:', { field, currentValue, valueLength: currentValue?.length });
-    setEditingField(field);
-    setEditValue(currentValue || '');
-  };
-
-  const cancelEdit = () => {
-    setEditingField(null);
-    setEditValue('');
-  };
-
-  const saveEdit = async (field: string) => {
-    console.log('[DEBUG] saveEdit called:', { field, editValue, editValueLength: editValue.length });
-    await onUpdate({ [field]: editValue });
-    setEditingField(null);
-    setEditValue('');
+  // Debounced update function
+  const updateField = (field: string, value: string) => {
+    onUpdate({ [field]: value });
   };
 
   const addActionItem = async () => {
@@ -131,109 +128,71 @@ export function OverviewTab({ incident, onUpdate, onRefresh }: OverviewTabProps)
     }
   };
 
-  const EditableSection = ({
-    title,
-    field,
-    value,
-    placeholder,
-  }: {
-    title: string;
-    field: string;
-    value?: string;
-    placeholder: string;
-  }) => {
-    const isEditing = editingField === field;
-
-    return (
-      <div className="bg-white border border-border rounded-lg p-6">
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="text-sm font-semibold text-text-primary">{title}</h3>
-          {!isEditing && (
-            <button
-              onClick={() => startEdit(field, value || '')}
-              className="text-text-secondary hover:text-text-primary transition-colors"
-            >
-              <Edit2 className="w-4 h-4" />
-            </button>
-          )}
-        </div>
-
-        {isEditing ? (
-          <div className="space-y-3">
-            <textarea
-              value={editValue}
-              onChange={(e) => {
-                console.log('[DEBUG] textarea onChange:', { field, newValue: e.target.value, valueLength: e.target.value.length });
-                setEditValue(e.target.value);
-              }}
-              placeholder={placeholder}
-              rows={4}
-              dir="ltr"
-              style={{ unicodeBidi: 'normal' }}
-              className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-status-info resize-none"
-              autoFocus
-            />
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => saveEdit(field)}
-                className="px-3 py-1.5 bg-status-success text-white text-sm rounded-lg hover:bg-green-600 transition-colors flex items-center gap-1"
-              >
-                <Check className="w-4 h-4" />
-                Save
-              </button>
-              <button
-                onClick={cancelEdit}
-                className="px-3 py-1.5 bg-gray-100 text-text-secondary text-sm rounded-lg hover:bg-gray-200 transition-colors flex items-center gap-1"
-              >
-                <X className="w-4 h-4" />
-                Cancel
-              </button>
-            </div>
-          </div>
-        ) : (
-          <div className="text-sm text-text-primary whitespace-pre-wrap" dir="ltr" style={{ unicodeBidi: 'normal' }}>
-            {value || (
-              <span className="text-text-secondary italic">{placeholder}</span>
-            )}
-          </div>
-        )}
-      </div>
-    );
-  };
-
   return (
     <div className="space-y-6">
       {/* Problem Statement */}
-      <EditableSection
-        title="Problem Statement"
-        field="problemStatement"
-        value={incident.problemStatement}
-        placeholder="Describe the problem that occurred..."
-      />
+      <div>
+        <h3 className="text-sm font-semibold text-text-primary mb-3">
+          Problem Statement
+        </h3>
+        <textarea
+          value={problemStatement}
+          onChange={(e) => {
+            setProblemStatement(e.target.value);
+            updateField('problemStatement', e.target.value);
+          }}
+          placeholder="Describe the problem that occurred..."
+          rows={4}
+          className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-status-info resize-none bg-white"
+        />
+      </div>
 
       {/* Impact */}
-      <EditableSection
-        title="Impact"
-        field="impact"
-        value={incident.impact}
-        placeholder="What was the impact? Which services or customers were affected?"
-      />
+      <div>
+        <h3 className="text-sm font-semibold text-text-primary mb-3">Impact</h3>
+        <textarea
+          value={impact}
+          onChange={(e) => {
+            setImpact(e.target.value);
+            updateField('impact', e.target.value);
+          }}
+          placeholder="What was the impact? Which services or customers were affected?"
+          rows={4}
+          className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-status-info resize-none bg-white"
+        />
+      </div>
 
       {/* Causes */}
-      <EditableSection
-        title="Causes"
-        field="causes"
-        value={incident.causes}
-        placeholder="What caused this incident?"
-      />
+      <div>
+        <h3 className="text-sm font-semibold text-text-primary mb-3">Causes</h3>
+        <textarea
+          value={causes}
+          onChange={(e) => {
+            setCauses(e.target.value);
+            updateField('causes', e.target.value);
+          }}
+          placeholder="What caused this incident?"
+          rows={4}
+          className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-status-info resize-none bg-white"
+        />
+      </div>
 
       {/* Steps to Resolve */}
-      <EditableSection
-        title="Steps to Resolve"
-        field="stepsToResolve"
-        value={incident.stepsToResolve}
-        placeholder="What steps were taken to resolve the incident?"
-      />
+      <div>
+        <h3 className="text-sm font-semibold text-text-primary mb-3">
+          Steps to Resolve
+        </h3>
+        <textarea
+          value={stepsToResolve}
+          onChange={(e) => {
+            setStepsToResolve(e.target.value);
+            updateField('stepsToResolve', e.target.value);
+          }}
+          placeholder="What steps were taken to resolve the incident?"
+          rows={4}
+          className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-status-info resize-none bg-white"
+        />
+      </div>
 
       {/* Action Items */}
       <div className="bg-white border border-border rounded-lg p-6">
