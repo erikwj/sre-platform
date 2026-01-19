@@ -66,6 +66,92 @@ router.get('/', async (req, res) => {
   }
 });
 
+// POST /api/incidents/:id/postmortem/create - Create empty postmortem
+router.post('/create', async (req, res) => {
+  try {
+    const { userId } = req.body;
+
+    // Check if postmortem already exists
+    const existingResult = await pool.query(
+      'SELECT id FROM postmortems WHERE incident_id = $1',
+      [req.params.id]
+    );
+
+    if (existingResult.rows.length > 0) {
+      // Return existing postmortem
+      const postmortemResult = await pool.query(
+        'SELECT * FROM postmortems WHERE incident_id = $1',
+        [req.params.id]
+      );
+      const row = postmortemResult.rows[0];
+      const postmortem = {
+        id: row.id,
+        incidentId: row.incident_id,
+        status: row.status,
+        businessImpactApplication: row.business_impact_application,
+        businessImpactStart: row.business_impact_start,
+        businessImpactEnd: row.business_impact_end,
+        businessImpactDuration: row.business_impact_duration,
+        businessImpactDescription: row.business_impact_description,
+        businessImpactAffectedCountries: row.business_impact_affected_countries || [],
+        businessImpactRegulatoryReporting: row.business_impact_regulatory_reporting,
+        businessImpactRegulatoryEntity: row.business_impact_regulatory_entity,
+        mitigationDescription: row.mitigation_description,
+        causalAnalysis: row.causal_analysis || [],
+        actionItems: row.action_items || [],
+        createdAt: row.created_at,
+        updatedAt: row.updated_at,
+        publishedAt: row.published_at,
+      };
+      return res.json(postmortem);
+    }
+
+    // Create new empty postmortem
+    const insertResult = await pool.query(
+      `INSERT INTO postmortems (
+        id, incident_id, status, created_by_id
+      ) VALUES (
+        gen_random_uuid(), $1, 'draft', $2
+      ) RETURNING id`,
+      [req.params.id, userId]
+    );
+
+    const postmortemId = insertResult.rows[0].id;
+
+    // Fetch and return the created postmortem
+    const postmortemResult = await pool.query(
+      'SELECT * FROM postmortems WHERE id = $1',
+      [postmortemId]
+    );
+
+    const row = postmortemResult.rows[0];
+    const postmortem = {
+      id: row.id,
+      incidentId: row.incident_id,
+      status: row.status,
+      businessImpactApplication: row.business_impact_application,
+      businessImpactStart: row.business_impact_start,
+      businessImpactEnd: row.business_impact_end,
+      businessImpactDuration: row.business_impact_duration,
+      businessImpactDescription: row.business_impact_description,
+      businessImpactAffectedCountries: row.business_impact_affected_countries || [],
+      businessImpactRegulatoryReporting: row.business_impact_regulatory_reporting || false,
+      businessImpactRegulatoryEntity: row.business_impact_regulatory_entity,
+      mitigationDescription: row.mitigation_description,
+      causalAnalysis: row.causal_analysis || [],
+      actionItems: row.action_items || [],
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+      publishedAt: row.published_at,
+    };
+
+    res.json(postmortem);
+  } catch (error) {
+    console.error('Error creating empty postmortem:', error);
+    res.status(500).json({ error: 'Failed to create postmortem' });
+  }
+});
+
 // POST /api/incidents/:id/postmortem - Generate or update postmortem
 router.post('/', async (req, res) => {
   const startTime = Date.now();

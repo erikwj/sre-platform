@@ -124,16 +124,46 @@ export function PostmortemTab({ incident, onRefresh }: PostmortemTabProps) {
     }
   };
 
-  const updateFieldImmediate = async (field: string, value: any) => {
-    if (!postmortem) {
-      console.warn('[WARN] Cannot update field - no postmortem exists');
-      return;
-    }
+  const createEmptyPostmortem = async () => {
+    console.log('[DEBUG] Creating empty postmortem record');
+    try {
+      const response = await fetch(`/api/incidents/${incident.id}/postmortem/create`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: incident.incidentLead?.id || null,
+        }),
+      });
 
-    console.log('[DEBUG] updateField called:', { field, value });
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('[ERROR] Create empty postmortem failed:', errorData);
+        throw new Error(errorData.error || 'Failed to create postmortem');
+      }
+      const data = await response.json();
+      console.log('[DEBUG] Empty postmortem created successfully:', data);
+      setPostmortem(data);
+      setHasPostmortem(true);
+      return data;
+    } catch (error) {
+      console.error('[ERROR] Error creating empty postmortem:', error);
+      throw error;
+    }
+  };
+
+  const updateFieldImmediate = async (field: string, value: any) => {
+    console.log('[DEBUG] updateField called:', { field, value, hasPostmortem });
     
     setSaving(true);
     try {
+      // If no postmortem exists yet, create one first
+      if (!postmortem || !hasPostmortem) {
+        console.log('[DEBUG] No postmortem exists, creating empty one first');
+        await createEmptyPostmortem();
+        // After creating, proceed with the update
+      }
+
+      // Update existing postmortem
       console.log('[DEBUG] Sending PATCH request for field:', field);
       const response = await fetch(`/api/incidents/${incident.id}/postmortem`, {
         method: 'PATCH',
@@ -164,9 +194,26 @@ export function PostmortemTab({ incident, onRefresh }: PostmortemTabProps) {
   // Use immediate update for non-text fields, debounced for text fields
   const updateField = (field: string, value: any, immediate: boolean = false) => {
     // Update local state immediately for responsive UI
-    if (postmortem) {
-      setPostmortem({ ...postmortem, [field]: value });
-    }
+    // Create a temporary postmortem object if it doesn't exist
+    const currentPostmortem = postmortem || {
+      id: '',
+      incidentId: incident.id,
+      businessImpactApplication: '',
+      businessImpactStart: '',
+      businessImpactEnd: '',
+      businessImpactDescription: '',
+      businessImpactAffectedCountries: [],
+      businessImpactRegulatoryReporting: false,
+      businessImpactRegulatoryEntity: '',
+      mitigationDescription: '',
+      causalAnalysis: [],
+      status: 'draft',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      publishedAt: '',
+    };
+    
+    setPostmortem({ ...currentPostmortem, [field]: value });
     
     // Use appropriate update method
     if (immediate) {
@@ -192,72 +239,233 @@ export function PostmortemTab({ incident, onRefresh }: PostmortemTabProps) {
     );
   }
 
-  // Show empty state with generate button
+  // Show empty state - different behavior based on incident status
   if (!hasPostmortem || !postmortem) {
     const canGenerate = incident.status === 'resolved' || incident.status === 'closed';
 
+    // If incident is not resolved/closed, show simple message
+    if (!canGenerate) {
+      return (
+        <div className="bg-white border border-border rounded-lg p-8">
+          <div className="text-center max-w-2xl mx-auto">
+            <FileText className="w-16 h-16 text-text-secondary mx-auto mb-4" />
+            <h3 className="text-xl font-semibold text-text-primary mb-2">
+              No Postmortem Yet
+            </h3>
+            <p className="text-text-secondary">
+              Postmortem can only be generated after the incident is resolved or closed.
+              <br />
+              Current status: <span className="font-medium capitalize">{incident.status}</span>
+            </p>
+          </div>
+        </div>
+      );
+    }
+
+    // If incident is resolved/closed, show full editable form even without postmortem
+    // Create empty postmortem object for form
+    const emptyPostmortem: Postmortem = postmortem || {
+      id: '',
+      incidentId: incident.id,
+      businessImpactApplication: '',
+      businessImpactStart: '',
+      businessImpactEnd: '',
+      businessImpactDescription: '',
+      businessImpactAffectedCountries: [],
+      businessImpactRegulatoryReporting: false,
+      businessImpactRegulatoryEntity: '',
+      mitigationDescription: '',
+      causalAnalysis: [],
+      status: 'draft',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      publishedAt: '',
+    };
+
+    // Render the full form (same as when postmortem exists)
     return (
-      <div className="bg-white border border-border rounded-lg p-8">
-        <div className="text-center max-w-2xl mx-auto">
-          <FileText className="w-16 h-16 text-text-secondary mx-auto mb-4" />
-          <h3 className="text-xl font-semibold text-text-primary mb-2">
-            No Postmortem Yet
-          </h3>
-          {canGenerate ? (
-            <>
-              <p className="text-text-secondary mb-6">
-                Create a postmortem to document the incident analysis using the Swiss cheese model.
-              </p>
-              <button
-                onClick={generatePostmortem}
-                disabled={generating}
-                className="inline-flex items-center gap-2 px-6 py-3 bg-accent-purple text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {generating ? (
-                  <>
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                    Generating Postmortem...
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="w-5 h-5" />
-                    Generate with AI
-                  </>
+      <div className="relative">
+        <div className="space-y-6">
+          {/* Header with Generate Button */}
+          <div className="bg-white border border-border rounded-lg p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-2xl font-bold text-text-primary">Postmortem Analysis</h2>
+                <p className="text-sm text-text-secondary mt-1">
+                  Based on the Swiss cheese model and systemic causal analysis
+                </p>
+              </div>
+              <div className="flex gap-3 items-center">
+                {saving && (
+                  <div className="text-xs text-text-secondary flex items-center gap-2">
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                    Saving...
+                  </div>
                 )}
-              </button>
-              
-              {/* Progressive Generation Indicator */}
-              {generating && generationStage && (
-                <div className="mt-6 space-y-3">
-                  {GENERATION_STAGES.map((stage) => (
-                    <div key={stage.key} className="flex items-center gap-3 justify-center">
+                <button
+                  onClick={generatePostmortem}
+                  disabled={generating}
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-accent-purple text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {generating ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Generating...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-4 h-4" />
+                      Generate with AI
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+            
+            {/* Progressive Generation Indicator in Header */}
+            {generating && generationStage && (
+              <div className="mt-4 pt-4 border-t border-border">
+                <div className="flex items-center gap-4">
+                  {GENERATION_STAGES.map((stage, index) => (
+                    <div key={stage.key} className="flex items-center gap-2 flex-1">
                       {generationStage === stage.key ? (
-                        <Loader2 className="w-4 h-4 text-accent-purple animate-spin" />
+                        <Loader2 className="w-4 h-4 text-accent-purple animate-spin flex-shrink-0" />
                       ) : GENERATION_STAGES.findIndex(s => s.key === stage.key) < GENERATION_STAGES.findIndex(s => s.key === generationStage) ? (
-                        <CheckCircle className="w-4 h-4 text-status-success" />
+                        <CheckCircle className="w-4 h-4 text-status-success flex-shrink-0" />
                       ) : (
-                        <div className="w-4 h-4 rounded-full border-2 border-gray-300" />
+                        <div className="w-4 h-4 rounded-full border-2 border-gray-300 flex-shrink-0" />
                       )}
-                      <span className={`text-sm ${
+                      <span className={`text-xs ${
                         generationStage === stage.key ? 'text-accent-purple font-medium' :
                         GENERATION_STAGES.findIndex(s => s.key === stage.key) < GENERATION_STAGES.findIndex(s => s.key === generationStage) ? 'text-status-success' :
                         'text-text-secondary'
                       }`}>
                         {stage.label}
                       </span>
+                      {index < GENERATION_STAGES.length - 1 && (
+                        <div className="flex-1 h-0.5 bg-gray-200 mx-2" />
+                      )}
                     </div>
                   ))}
                 </div>
+              </div>
+            )}
+          </div>
+
+          {/* Business Impact Section */}
+          <SectionCard
+            title="Business Impact"
+            icon={AlertTriangle}
+            tooltip={FIELD_TOOLTIPS.businessImpact}
+          >
+            <div className="space-y-4">
+              <InputField
+                label="Application"
+                value={emptyPostmortem.businessImpactApplication || ''}
+                onChange={(value) => updateField('businessImpactApplication', value)}
+                placeholder="Which application was impacted?"
+              />
+              
+              <div className="grid grid-cols-2 gap-4">
+                <DateTimeField
+                  label="Start Time"
+                  value={emptyPostmortem.businessImpactStart || ''}
+                  onChange={(value) => updateField('businessImpactStart', value, true)}
+                />
+                <DateTimeField
+                  label="End Time"
+                  value={emptyPostmortem.businessImpactEnd || ''}
+                  onChange={(value) => updateField('businessImpactEnd', value, true)}
+                />
+              </div>
+
+              {emptyPostmortem.businessImpactStart && emptyPostmortem.businessImpactEnd && (
+                <div className="bg-background p-3 rounded border border-border">
+                  <div className="flex items-center gap-2 text-sm">
+                    <Clock className="w-4 h-4 text-status-info" />
+                    <span className="font-medium">Duration:</span>
+                    <span>{calculateDuration(emptyPostmortem.businessImpactStart, emptyPostmortem.businessImpactEnd)}</span>
+                  </div>
+                </div>
               )}
-            </>
-          ) : (
-            <p className="text-text-secondary">
-              Postmortem can only be generated after the incident is resolved or closed.
-              <br />
-              Current status: <span className="font-medium capitalize">{incident.status}</span>
-            </p>
+
+              <TextAreaField
+                label="Description"
+                value={emptyPostmortem.businessImpactDescription || ''}
+                onChange={(value) => updateField('businessImpactDescription', value)}
+                placeholder="Describe the business impact in detail..."
+                rows={4}
+              />
+
+              <MultiSelectField
+                label="Affected Countries"
+                value={emptyPostmortem.businessImpactAffectedCountries || []}
+                onChange={(value) => updateField('businessImpactAffectedCountries', value, true)}
+                placeholder="Add countries..."
+              />
+
+              <div className="space-y-3">
+                <CheckboxField
+                  label="Regulatory Reporting Required"
+                  checked={emptyPostmortem.businessImpactRegulatoryReporting || false}
+                  onChange={(value) => updateField('businessImpactRegulatoryReporting', value, true)}
+                />
+
+                {emptyPostmortem.businessImpactRegulatoryReporting && (
+                  <InputField
+                    label="Regulatory Entity"
+                    value={emptyPostmortem.businessImpactRegulatoryEntity || ''}
+                    onChange={(value) => updateField('businessImpactRegulatoryEntity', value)}
+                    placeholder="e.g., DORA, ECB, etc."
+                  />
+                )}
+              </div>
+            </div>
+          </SectionCard>
+
+          {/* Mitigation Section */}
+          <SectionCard
+            title="Mitigation"
+            icon={Shield}
+            tooltip={FIELD_TOOLTIPS.mitigation}
+          >
+            <TextAreaField
+              label="Mitigation Actions"
+              value={emptyPostmortem.mitigationDescription || ''}
+              onChange={(value) => updateField('mitigationDescription', value)}
+              placeholder="Describe all actions, resilience patterns, or decisions taken to mitigate the incident..."
+              rows={6}
+            />
+          </SectionCard>
+
+          {/* Swiss Cheese Model - Causal Analysis with Action Items */}
+          <SectionCard
+            title="Systemic Causal Analysis (Swiss Cheese Model)"
+            icon={FileText}
+            tooltip={FIELD_TOOLTIPS.causalAnalysis}
+          >
+            <CausalAnalysisEditor
+              items={emptyPostmortem.causalAnalysis || []}
+              onChange={(value) => updateField('causalAnalysis', value, true)}
+              users={users}
+            />
+          </SectionCard>
+
+          {/* Publish Button - only show if postmortem exists and is not published */}
+          {hasPostmortem && emptyPostmortem.status !== 'published' && (
+            <div className="flex gap-3">
+              <button
+                onClick={publishPostmortem}
+                className="px-4 py-2 bg-status-success text-white rounded-lg hover:bg-green-600 transition-colors"
+              >
+                Publish Postmortem
+              </button>
+            </div>
           )}
         </div>
+
+        {/* AI Chatbot - only show if postmortem exists */}
+        {hasPostmortem && <AIChatbot postmortem={emptyPostmortem} incidentId={incident.id} />}
       </div>
     );
   }
