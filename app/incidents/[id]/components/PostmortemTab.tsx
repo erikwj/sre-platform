@@ -87,10 +87,31 @@ export function PostmortemTab({ incident, onRefresh }: PostmortemTabProps) {
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [currentMessage, setCurrentMessage] = useState('');
   const [editingSection, setEditingSection] = useState<string | null>(null);
+  const [autoGenerateAttempted, setAutoGenerateAttempted] = useState(false);
 
   useEffect(() => {
     fetchPostmortem();
   }, [incident.id]);
+
+  // Auto-generate postmortem when tab is accessed if conditions are met
+  useEffect(() => {
+    const canGenerate = incident.status === 'resolved' || incident.status === 'closed';
+    
+    // Check if postmortem is empty (all key fields are empty or null)
+    const isPostmortemEmpty = postmortem && (
+      !postmortem.introduction?.trim() &&
+      !postmortem.timelineSummary?.trim() &&
+      !postmortem.rootCause?.trim() &&
+      !postmortem.impactAnalysis?.trim() &&
+      !postmortem.howWeFixedIt?.trim() &&
+      !postmortem.lessonsLearned?.trim()
+    );
+    
+    if (!loading && (!postmortem || isPostmortemEmpty) && canGenerate && !autoGenerateAttempted && !generating) {
+      setAutoGenerateAttempted(true);
+      generatePostmortem(true); // Pass true to indicate auto-generation
+    }
+  }, [loading, postmortem, incident.status, autoGenerateAttempted, generating]);
 
   const fetchPostmortem = async () => {
     try {
@@ -105,8 +126,9 @@ export function PostmortemTab({ incident, onRefresh }: PostmortemTabProps) {
     }
   };
 
-  const generatePostmortem = async () => {
-    if (!confirm('Generate AI postmortem? This will analyze the incident data and create a comprehensive postmortem document.')) {
+  const generatePostmortem = async (autoGenerate: boolean = false) => {
+    // Only show confirmation if manually triggered
+    if (!autoGenerate && !confirm('Generate AI postmortem? This will analyze the incident data and create a comprehensive postmortem document.')) {
       return;
     }
 
@@ -283,7 +305,7 @@ export function PostmortemTab({ incident, onRefresh }: PostmortemTabProps) {
                 Generate an AI-powered postmortem based on the incident timeline, actions taken, and impact analysis.
               </p>
               <button
-                onClick={generatePostmortem}
+                onClick={() => generatePostmortem(false)}
                 disabled={generating}
                 className="inline-flex items-center gap-2 px-6 py-3 bg-accent-purple text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >

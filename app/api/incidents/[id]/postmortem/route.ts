@@ -69,29 +69,39 @@ export async function POST(
     if (action === 'generate') {
       // Fetch incident data with all related information
       const incidentResult = await pool.query(
-        `SELECT 
+        `SELECT
           i.*,
           il.name as lead_name,
           r.name as reporter_name,
-          json_agg(DISTINCT jsonb_build_object(
-            'type', te.event_type,
-            'description', te.description,
-            'createdAt', te.created_at,
-            'userName', u.name
-          ) ORDER BY te.created_at) FILTER (WHERE te.id IS NOT NULL) as timeline_events,
-          json_agg(DISTINCT jsonb_build_object(
-            'serviceName', rb.service_name,
-            'teamName', rb.team_name
-          )) FILTER (WHERE rb.id IS NOT NULL) as services
+          COALESCE(
+            (SELECT json_agg(timeline_data ORDER BY timeline_data->>'createdAt')
+             FROM (
+               SELECT DISTINCT ON (te.id) jsonb_build_object(
+                 'type', te.event_type,
+                 'description', te.description,
+                 'createdAt', te.created_at,
+                 'userName', u.name
+               ) as timeline_data
+               FROM timeline_events te
+               LEFT JOIN users u ON te.user_id = u.id
+               WHERE te.incident_id = i.id
+             ) timeline_subquery
+            ), '[]'::json
+          ) as timeline_events,
+          COALESCE(
+            (SELECT json_agg(DISTINCT jsonb_build_object(
+              'serviceName', rb.service_name,
+              'teamName', rb.team_name
+            ))
+             FROM incident_services isr
+             LEFT JOIN runbooks rb ON isr.runbook_id = rb.id
+             WHERE isr.incident_id = i.id AND rb.id IS NOT NULL
+            ), '[]'::json
+          ) as services
         FROM incidents i
         LEFT JOIN users il ON i.incident_lead_id = il.id
         LEFT JOIN users r ON i.reporter_id = r.id
-        LEFT JOIN timeline_events te ON i.id = te.incident_id
-        LEFT JOIN users u ON te.user_id = u.id
-        LEFT JOIN incident_services isr ON i.id = isr.incident_id
-        LEFT JOIN runbooks rb ON isr.runbook_id = rb.id
-        WHERE i.id = $1
-        GROUP BY i.id, il.name, r.name`,
+        WHERE i.id = $1`,
         [params.id]
       );
 
