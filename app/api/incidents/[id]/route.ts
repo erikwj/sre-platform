@@ -69,24 +69,29 @@ export async function GET(
 
     const incident = result.rows[0];
     
-    // Transform to match expected format
+    // Transform to match expected format (snake_case to camelCase)
     const transformed = {
-      ...incident,
+      id: incident.id,
+      incidentNumber: incident.incident_number,
+      title: incident.title,
+      description: incident.description,
+      severity: incident.severity,
+      status: incident.status,
+      createdAt: incident.created_at,
+      detectedAt: incident.detected_at,
+      mitigatedAt: incident.mitigated_at,
+      resolvedAt: incident.resolved_at,
+      closedAt: incident.closed_at,
+      problemStatement: incident.problem_statement,
+      impact: incident.impact,
+      causes: incident.causes,
+      stepsToResolve: incident.steps_to_resolve,
       incidentLead: incident.incident_lead,
       reporter: incident.reporter,
       timelineEvents: incident.timeline_events,
       actionItems: incident.action_items,
       services: incident.services,
-      problemStatement: incident.problem_statement,
-      stepsToResolve: incident.steps_to_resolve,
     };
-
-    console.log('[DEBUG] GET incident - transformed fields:', {
-      problemStatement: transformed.problemStatement,
-      stepsToResolve: transformed.stepsToResolve,
-      impact: transformed.impact,
-      causes: transformed.causes
-    });
 
     return NextResponse.json(transformed);
   } catch (error) {

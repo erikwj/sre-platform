@@ -445,32 +445,58 @@ ${timelineEvents.map((e: any) => `- ${e.createdAt}: [${e.type}] ${e.description}
 - Causes: ${incident.causes || 'Under investigation'}
 - Steps to Resolve: ${incident.steps_to_resolve || 'Not documented'}
 
-Please generate a comprehensive postmortem with the following sections. Use clear section markers:
+CRITICAL: You must generate ALL sections below with the EXACT format specified. Do not skip any section.
 
 [BUSINESS_IMPACT]
-Provide structured business impact information:
-- Application: Name of the affected application
-- Start Time: When the impact started (ISO format)
-- End Time: When the impact ended (ISO format)
-- Description: Detailed description of which specific functionalities were not available for end customers/consumers
-- Affected Countries: JSON array of country codes (e.g., ["US", "UK", "DE"])
-- Regulatory Reporting: true/false if regulatory reporting is needed
-- Regulatory Entity: If reporting needed, specify entity (e.g., "DORA", "ECB")
+You MUST provide each field on its own line in this exact format:
+Application: <name of the affected application or service>
+Start Time: ${incident.detected_at}
+End Time: ${incident.resolved_at || incident.detected_at}
+Description: <A detailed multi-line description of which specific functionalities were not available for end customers/consumers. Explain what users could not do, which features were broken, and the scope of the impact.>
+Affected Countries: ["US", "UK", "DE"]
+Regulatory Reporting: false
+Regulatory Entity: N/A
+
+IMPORTANT:
+- Application field is REQUIRED - use the service name from affected services or derive from incident title
+- Description MUST be detailed and can span multiple lines
+- Use actual ISO timestamps for Start Time and End Time
+- Affected Countries should be a valid JSON array
 
 [MITIGATION]
-Describe all actions, resilience patterns, or decisions that were taken to mitigate the incident. Be specific about what was done and why.
+Describe all actions, resilience patterns, or decisions that were taken to mitigate the incident. Be specific about what was done and why. This should be a detailed narrative explaining:
+- What immediate actions were taken
+- What resilience patterns were applied
+- What decisions were made and their rationale
+- How the incident was brought under control
 
 [CAUSAL_ANALYSIS]
-Provide a systemic causal analysis using the Swiss cheese model. For each identified failure, specify:
-- Interception Layer: One of [define, design, build, test, release, deploy, operate, response]
-- Cause: The primary cause category (e.g., "Alerting gaps", "Architectural weakness", "Change management failure")
-- Sub-cause: The specific sub-cause (e.g., "Missing alerts for key metrics", "Lack of modularity", "Lack of coordination")
-- Description: Brief explanation
-- Action Items: Array of action items specific to this cause, each with "description" and "priority" (high/medium/low)
+Provide a systemic causal analysis using the Swiss cheese model. You MUST generate at least 2-4 causal analysis items.
 
-Format as JSON array: [{"interceptionLayer": "...", "cause": "...", "subCause": "...", "description": "...", "actionItems": [{"description": "...", "priority": "..."}]}]
+Format as a valid JSON array with this EXACT structure:
+[
+  {
+    "interceptionLayer": "operate",
+    "cause": "Alerting gaps",
+    "subCause": "Missing alerts for key metrics",
+    "description": "Brief explanation of this specific failure",
+    "actionItems": [
+      {
+        "description": "Specific action to address this cause",
+        "priority": "high"
+      }
+    ]
+  }
+]
 
-Note: Action items should be directly related to addressing the specific cause they are nested under.
+Valid interceptionLayer values: define, design, build, test, release, deploy, operate, response
+Valid priority values: high, medium, low
+
+IMPORTANT:
+- Generate at least 2-4 distinct causal analysis items
+- Each item MUST have at least 1-3 action items
+- Action items should be specific and actionable
+- The JSON must be valid and parseable
 
 Be professional, factual, and constructive. Focus on learning and improvement rather than blame.`;
 }
@@ -509,31 +535,48 @@ function parsePostmortemSections(content: string, incident: any): any {
   const businessImpactMatch = content.match(/\[BUSINESS_IMPACT\]([\s\S]*?)(?=\[|$)/);
   if (businessImpactMatch) {
     const impactText = businessImpactMatch[1].trim();
-    console.log('[DEBUG] Business impact text found:', impactText.substring(0, 200));
+    console.log('[DEBUG] Business impact text found:', impactText.substring(0, 300));
     
-    // Try to extract structured data
-    const appMatch = impactText.match(/Application:\s*(.+)/i);
+    // Extract Application - more flexible matching
+    const appMatch = impactText.match(/Application:\s*(.+?)(?=\n|$)/i);
     if (appMatch) {
       sections.businessImpactApplication = appMatch[1].trim();
       console.log('[DEBUG] Extracted application:', sections.businessImpactApplication);
+    } else {
+      // Fallback: try to extract from services or incident title
+      if (incident.services && incident.services.length > 0) {
+        sections.businessImpactApplication = incident.services[0].serviceName;
+        console.log('[DEBUG] Using fallback application from services:', sections.businessImpactApplication);
+      } else {
+        sections.businessImpactApplication = incident.title || 'Unknown Application';
+        console.log('[DEBUG] Using fallback application from title:', sections.businessImpactApplication);
+      }
     }
     
-    const startMatch = impactText.match(/Start Time:\s*(.+)/i);
+    // Extract Start Time
+    const startMatch = impactText.match(/Start Time:\s*(.+?)(?=\n|$)/i);
     if (startMatch) {
       try {
-        sections.businessImpactStart = new Date(startMatch[1].trim()).toISOString();
+        const timeStr = startMatch[1].trim();
+        sections.businessImpactStart = new Date(timeStr).toISOString();
+        console.log('[DEBUG] Extracted start time:', sections.businessImpactStart);
       } catch (e) {
+        console.log('[WARN] Failed to parse start time, using incident detected_at');
         sections.businessImpactStart = incident.detected_at;
       }
     } else {
       sections.businessImpactStart = incident.detected_at;
     }
     
-    const endMatch = impactText.match(/End Time:\s*(.+)/i);
+    // Extract End Time
+    const endMatch = impactText.match(/End Time:\s*(.+?)(?=\n|$)/i);
     if (endMatch) {
       try {
-        sections.businessImpactEnd = new Date(endMatch[1].trim()).toISOString();
+        const timeStr = endMatch[1].trim();
+        sections.businessImpactEnd = new Date(timeStr).toISOString();
+        console.log('[DEBUG] Extracted end time:', sections.businessImpactEnd);
       } catch (e) {
+        console.log('[WARN] Failed to parse end time, using incident resolved_at');
         sections.businessImpactEnd = incident.resolved_at;
       }
     } else {
@@ -545,29 +588,57 @@ function parsePostmortemSections(content: string, incident: any): any {
       const start = new Date(sections.businessImpactStart);
       const end = new Date(sections.businessImpactEnd);
       sections.businessImpactDuration = Math.floor((end.getTime() - start.getTime()) / 60000);
+      console.log('[DEBUG] Calculated duration:', sections.businessImpactDuration, 'minutes');
     }
     
-    const descMatch = impactText.match(/Description:\s*(.+?)(?=\n-|\nAffected|$)/i);
-    if (descMatch) sections.businessImpactDescription = descMatch[1].trim();
+    // Extract Description - improved multi-line support
+    // Match from "Description:" until we hit another field or section
+    const descMatch = impactText.match(/Description:\s*([\s\S]*?)(?=\nApplication:|Start Time:|End Time:|Affected Countries:|Regulatory Reporting:|Regulatory Entity:|\[|$)/i);
+    if (descMatch) {
+      sections.businessImpactDescription = descMatch[1].trim();
+      console.log('[DEBUG] Extracted description length:', sections.businessImpactDescription.length);
+      console.log('[DEBUG] Description preview:', sections.businessImpactDescription.substring(0, 100));
+    } else {
+      // Fallback: try simpler pattern
+      const simpleDescMatch = impactText.match(/Description:\s*(.+)/i);
+      if (simpleDescMatch) {
+        sections.businessImpactDescription = simpleDescMatch[1].trim();
+        console.log('[DEBUG] Extracted description (simple pattern):', sections.businessImpactDescription.substring(0, 100));
+      } else {
+        console.log('[WARN] No description found in business impact section');
+      }
+    }
     
-    const countriesMatch = impactText.match(/Affected Countries:\s*(\[.+?\])/i);
+    // Extract Affected Countries
+    const countriesMatch = impactText.match(/Affected Countries:\s*(\[[\s\S]*?\])/i);
     if (countriesMatch) {
       try {
         sections.businessImpactAffectedCountries = JSON.parse(countriesMatch[1]);
+        console.log('[DEBUG] Extracted countries:', sections.businessImpactAffectedCountries);
       } catch (e) {
+        console.log('[WARN] Failed to parse affected countries JSON');
         sections.businessImpactAffectedCountries = [];
       }
     }
     
+    // Extract Regulatory Reporting
     const regReportingMatch = impactText.match(/Regulatory Reporting:\s*(true|false)/i);
     if (regReportingMatch) {
       sections.businessImpactRegulatoryReporting = regReportingMatch[1].toLowerCase() === 'true';
+      console.log('[DEBUG] Regulatory reporting:', sections.businessImpactRegulatoryReporting);
     }
     
-    const regEntityMatch = impactText.match(/Regulatory Entity:\s*(.+)/i);
+    // Extract Regulatory Entity
+    const regEntityMatch = impactText.match(/Regulatory Entity:\s*(.+?)(?=\n|$)/i);
     if (regEntityMatch && sections.businessImpactRegulatoryReporting) {
-      sections.businessImpactRegulatoryEntity = regEntityMatch[1].trim().replace(/^["']|["']$/g, '');
+      const entity = regEntityMatch[1].trim().replace(/^["']|["']$/g, '');
+      if (entity && entity.toLowerCase() !== 'n/a') {
+        sections.businessImpactRegulatoryEntity = entity;
+        console.log('[DEBUG] Regulatory entity:', sections.businessImpactRegulatoryEntity);
+      }
     }
+  } else {
+    console.log('[WARN] No business impact section found in AI response');
   }
 
   console.log('[DEBUG] Parsing mitigation section...');
@@ -581,30 +652,80 @@ function parsePostmortemSections(content: string, incident: any): any {
   }
 
   console.log('[DEBUG] Parsing causal analysis section...');
-  // Extract Causal Analysis
+  // Extract Causal Analysis - improved JSON parsing
   const causalMatch = content.match(/\[CAUSAL_ANALYSIS\]([\s\S]*?)(?=\[|$)/);
   if (causalMatch) {
-    const causalText = causalMatch[1].trim();
-    console.log('[DEBUG] Causal analysis text found:', causalText.substring(0, 200));
+    let causalText = causalMatch[1].trim();
+    console.log('[DEBUG] Causal analysis text found, length:', causalText.length);
+    console.log('[DEBUG] First 500 chars of causal text:', causalText.substring(0, 500));
+    
     try {
-      const jsonMatch = causalText.match(/\[[\s\S]*\]/);
+      // Remove markdown code blocks if present (```json ... ```)
+      causalText = causalText.replace(/```json\s*/g, '').replace(/```\s*/g, '');
+      console.log('[DEBUG] After removing markdown code blocks, length:', causalText.length);
+      
+      // Try to find JSON array - be more flexible with whitespace
+      const jsonMatch = causalText.match(/\[\s*\{[\s\S]*\}\s*\]/);
       if (jsonMatch) {
-        sections.causalAnalysis = JSON.parse(jsonMatch[0]);
-        console.log('[DEBUG] Parsed causal analysis items:', sections.causalAnalysis.length);
+        const jsonStr = jsonMatch[0];
+        console.log('[DEBUG] Found JSON array, length:', jsonStr.length);
+        console.log('[DEBUG] First 200 chars of JSON:', jsonStr.substring(0, 200));
+        sections.causalAnalysis = JSON.parse(jsonStr);
+        console.log('[DEBUG] Successfully parsed causal analysis items:', sections.causalAnalysis.length);
+        
+        // Validate structure
+        const originalLength = sections.causalAnalysis.length;
+        sections.causalAnalysis = sections.causalAnalysis.filter((item: any) => {
+          const isValid = item.interceptionLayer && item.cause && item.description;
+          if (!isValid) {
+            console.log('[WARN] Filtering out invalid causal analysis item:', JSON.stringify(item));
+          }
+          return isValid;
+        });
+        console.log('[DEBUG] Valid causal analysis items after filtering:', sections.causalAnalysis.length, 'out of', originalLength);
       } else {
-        console.log('[WARN] No JSON array found in causal analysis section');
+        console.log('[WARN] No valid JSON array found in causal analysis section');
+        console.log('[DEBUG] Causal text (first 1000 chars):', causalText.substring(0, 1000));
+        
+        // Try alternative patterns
+        console.log('[DEBUG] Trying alternative JSON extraction patterns...');
+        const altMatch1 = causalText.match(/\[[\s\S]*\]/);
+        if (altMatch1) {
+          console.log('[DEBUG] Alternative pattern 1 found, attempting parse...');
+          try {
+            sections.causalAnalysis = JSON.parse(altMatch1[0]);
+            console.log('[DEBUG] Alternative pattern 1 succeeded! Items:', sections.causalAnalysis.length);
+          } catch (e2) {
+            console.log('[DEBUG] Alternative pattern 1 failed:', e2 instanceof Error ? e2.message : String(e2));
+          }
+        }
       }
     } catch (e) {
-      console.error('[ERROR] Failed to parse causal analysis:', e);
-      console.error('[ERROR] Causal text that failed:', causalText);
+      console.error('[ERROR] Failed to parse causal analysis JSON:', e);
+      console.error('[ERROR] Error details:', e instanceof Error ? e.message : String(e));
+      console.error('[ERROR] Causal text that failed (first 1000 chars):', causalText.substring(0, 1000));
       sections.causalAnalysis = [];
     }
   } else {
     console.log('[WARN] No causal analysis section found in AI response');
+    console.log('[DEBUG] Searching for [CAUSAL_ANALYSIS] in content...');
+    const hasSection = content.includes('[CAUSAL_ANALYSIS]');
+    console.log('[DEBUG] Content includes [CAUSAL_ANALYSIS]:', hasSection);
+    if (hasSection) {
+      const sectionIndex = content.indexOf('[CAUSAL_ANALYSIS]');
+      console.log('[DEBUG] Section found at index:', sectionIndex);
+      console.log('[DEBUG] Content around section:', content.substring(sectionIndex, sectionIndex + 500));
+    }
   }
 
   // Action items are now nested within causal analysis items
-  console.log('[DEBUG] Action items are now nested within causal analysis');
+  console.log('[DEBUG] Action items are nested within causal analysis');
+  console.log('[DEBUG] Final parsed sections:', {
+    hasApplication: !!sections.businessImpactApplication,
+    hasDescription: !!sections.businessImpactDescription,
+    hasMitigation: !!sections.mitigationDescription,
+    causalAnalysisCount: sections.causalAnalysis.length,
+  });
 
   return sections;
 }
