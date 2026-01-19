@@ -163,6 +163,8 @@ router.post('/', async (req, res) => {
 
     if (action === 'generate') {
       console.log('[DEBUG] Starting postmortem generation for incident:', req.params.id);
+      const dbQueryStart = Date.now();
+      
       // Fetch incident data with all related information
       const incidentResult = await pool.query(
         `SELECT
@@ -200,12 +202,20 @@ router.post('/', async (req, res) => {
         WHERE i.id = $1`,
         [req.params.id]
       );
+      
+      const dbQueryDuration = Date.now() - dbQueryStart;
+      console.log('[DIAGNOSTIC] Database query took:', dbQueryDuration, 'ms');
 
       if (incidentResult.rows.length === 0) {
         return res.status(404).json({ error: 'Incident not found' });
       }
 
       const incident = incidentResult.rows[0];
+      
+      // Log timeline event count for diagnostics
+      const timelineCount = incident.timeline_events?.length || 0;
+      console.log('[DIAGNOSTIC] Timeline events count:', timelineCount);
+      console.log('[DIAGNOSTIC] Services count:', incident.services?.length || 0);
 
       // Check if incident is resolved or closed
       if (incident.status !== 'resolved' && incident.status !== 'closed') {
@@ -218,7 +228,13 @@ router.post('/', async (req, res) => {
       console.log('[DEBUG] Building prompt for AI generation');
       const prompt = buildPostmortemPrompt(incident);
       
+      const promptLength = prompt.length;
+      const estimatedTokens = Math.ceil(promptLength / 4); // Rough estimate: 1 token ≈ 4 chars
+      console.log('[DIAGNOSTIC] Prompt length:', promptLength, 'characters');
+      console.log('[DIAGNOSTIC] Estimated prompt tokens:', estimatedTokens);
+      
       console.log('[DEBUG] Calling Anthropic API...');
+      const apiCallStart = Date.now();
       const message = await anthropic.messages.create({
         model: 'claude-sonnet-4-5',
         max_tokens: 8192,
@@ -229,12 +245,17 @@ router.post('/', async (req, res) => {
           },
         ],
       });
+      
+      const apiCallDuration = Date.now() - apiCallStart;
+      console.log('[DIAGNOSTIC] Anthropic API call took:', apiCallDuration, 'ms');
 
       const generatedContent = message.content[0].type === 'text'
         ? message.content[0].text
         : '';
 
       console.log('[DEBUG] AI response received, length:', generatedContent.length);
+      console.log('[DIAGNOSTIC] Response tokens used:', message.usage?.output_tokens || 'unknown');
+      console.log('[DIAGNOSTIC] Input tokens used:', message.usage?.input_tokens || 'unknown');
 
       // Parse the AI response into structured sections
       console.log('[DEBUG] Parsing AI response into sections...');
@@ -561,6 +582,548 @@ router.post('/check', async (req, res) => {
     res.status(500).json({ error: 'Failed to process AI request' });
   }
 });
+
+// POST /api/incidents/:id/postmortem/generate-chunked - Generate postmortem in chunks
+router.post('/generate-chunked', async (req, res) => {
+  const startTime = Date.now();
+  console.log('[DEBUG] POST /postmortem/generate-chunked - Request received at', new Date().toISOString());
+  
+  try {
+    const { section, userId } = req.body;
+    
+    if (!section) {
+      return res.status(400).json({ error: 'Section parameter is required' });
+    }
+
+    console.log('[DEBUG] Generating section:', section);
+    const dbQueryStart = Date.now();
+    
+    // Fetch incident data - optimized query based on section needs
+    let incidentQuery;
+    if (section === 'business_impact') {
+      // For business impact, we need basic incident info only
+      incidentQuery = `
+        SELECT
+          i.*,
+          il.name as lead_name,
+          r.name as reporter_name,
+          COALESCE(
+            (SELECT json_agg(DISTINCT jsonb_build_object(
+              'serviceName', rb.service_name,
+              'teamName', rb.team_name
+            ))
+             FROM incident_services isr
+             LEFT JOIN runbooks rb ON isr.runbook_id = rb.id
+             WHERE isr.incident_id = i.id AND rb.id IS NOT NULL
+            ), '[]'::json
+          ) as services
+        FROM incidents i
+        LEFT JOIN users il ON i.incident_lead_id = il.id
+        LEFT JOIN users r ON i.reporter_id = r.id
+        WHERE i.id = $1
+      `;
+    } else if (section === 'mitigation') {
+      // For mitigation, we need timeline events but can limit them
+      incidentQuery = `
+        SELECT
+          i.*,
+          il.name as lead_name,
+          r.name as reporter_name,
+          COALESCE(
+            (SELECT json_agg(timeline_data ORDER BY timeline_data->>'createdAt')
+             FROM (
+               SELECT DISTINCT ON (te.id) jsonb_build_object(
+                 'type', te.event_type,
+                 'description', te.description,
+                 'createdAt', te.created_at,
+                 'userName', u.name
+               ) as timeline_data
+               FROM timeline_events te
+               LEFT JOIN users u ON te.user_id = u.id
+               WHERE te.incident_id = i.id
+               ORDER BY te.id, te.created_at DESC
+               LIMIT 50
+             ) timeline_subquery
+            ), '[]'::json
+          ) as timeline_events
+        FROM incidents i
+        LEFT JOIN users il ON i.incident_lead_id = il.id
+        LEFT JOIN users r ON i.reporter_id = r.id
+        WHERE i.id = $1
+      `;
+    } else if (section === 'causal_analysis') {
+      // For causal analysis, we need summarized timeline
+      incidentQuery = `
+        SELECT
+          i.*,
+          il.name as lead_name,
+          r.name as reporter_name,
+          COALESCE(
+            (SELECT json_agg(timeline_data ORDER BY timeline_data->>'createdAt')
+             FROM (
+               SELECT DISTINCT ON (te.id) jsonb_build_object(
+                 'type', te.event_type,
+                 'description', te.description,
+                 'createdAt', te.created_at,
+                 'userName', u.name
+               ) as timeline_data
+               FROM timeline_events te
+               LEFT JOIN users u ON te.user_id = u.id
+               WHERE te.incident_id = i.id
+               ORDER BY te.id, te.created_at DESC
+               LIMIT 30
+             ) timeline_subquery
+            ), '[]'::json
+          ) as timeline_events,
+          COALESCE(
+            (SELECT json_agg(DISTINCT jsonb_build_object(
+              'serviceName', rb.service_name,
+              'teamName', rb.team_name
+            ))
+             FROM incident_services isr
+             LEFT JOIN runbooks rb ON isr.runbook_id = rb.id
+             WHERE isr.incident_id = i.id AND rb.id IS NOT NULL
+            ), '[]'::json
+          ) as services
+        FROM incidents i
+        LEFT JOIN users il ON i.incident_lead_id = il.id
+        LEFT JOIN users r ON i.reporter_id = r.id
+        WHERE i.id = $1
+      `;
+    } else {
+      return res.status(400).json({ error: 'Invalid section' });
+    }
+
+    const incidentResult = await pool.query(incidentQuery, [req.params.id]);
+    
+    const dbQueryDuration = Date.now() - dbQueryStart;
+    console.log('[DIAGNOSTIC] Database query took:', dbQueryDuration, 'ms');
+
+    if (incidentResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Incident not found' });
+    }
+
+    const incident = incidentResult.rows[0];
+    
+    const timelineCount = incident.timeline_events?.length || 0;
+    console.log('[DIAGNOSTIC] Timeline events count:', timelineCount);
+
+    // Check if incident is resolved or closed
+    if (incident.status !== 'resolved' && incident.status !== 'closed') {
+      return res.status(400).json({
+        error: 'Postmortem can only be generated for resolved or closed incidents'
+      });
+    }
+
+    // Build section-specific prompt
+    let prompt;
+    let maxTokens;
+    
+    if (section === 'business_impact') {
+      prompt = buildBusinessImpactPrompt(incident);
+      maxTokens = 1024;
+    } else if (section === 'mitigation') {
+      prompt = buildMitigationPrompt(incident);
+      maxTokens = 2048;
+    } else if (section === 'causal_analysis') {
+      prompt = buildCausalAnalysisPrompt(incident);
+      maxTokens = 4096;
+    }
+    
+    const promptLength = prompt.length;
+    const estimatedTokens = Math.ceil(promptLength / 4);
+    console.log('[DIAGNOSTIC] Prompt length:', promptLength, 'characters');
+    console.log('[DIAGNOSTIC] Estimated prompt tokens:', estimatedTokens);
+    
+    console.log('[DEBUG] Calling Anthropic API for section:', section);
+    const apiCallStart = Date.now();
+    const message = await anthropic.messages.create({
+      model: 'claude-sonnet-4-5',
+      max_tokens: maxTokens,
+      messages: [
+        {
+          role: 'user',
+          content: prompt,
+        },
+      ],
+    });
+    
+    const apiCallDuration = Date.now() - apiCallStart;
+    console.log('[DIAGNOSTIC] Anthropic API call took:', apiCallDuration, 'ms');
+
+    const generatedContent = message.content[0].type === 'text'
+      ? message.content[0].text
+      : '';
+
+    console.log('[DEBUG] AI response received, length:', generatedContent.length);
+    console.log('[DIAGNOSTIC] Response tokens used:', message.usage?.output_tokens || 'unknown');
+    console.log('[DIAGNOSTIC] Input tokens used:', message.usage?.input_tokens || 'unknown');
+
+    // Parse the section-specific response
+    let sectionData;
+    if (section === 'business_impact') {
+      sectionData = parseBusinessImpact(generatedContent, incident);
+    } else if (section === 'mitigation') {
+      sectionData = { mitigationDescription: generatedContent.trim() };
+    } else if (section === 'causal_analysis') {
+      sectionData = parseCausalAnalysis(generatedContent);
+    }
+
+    // Check if postmortem exists, create if not
+    const existingResult = await pool.query(
+      'SELECT id FROM postmortems WHERE incident_id = $1',
+      [req.params.id]
+    );
+
+    let postmortemId;
+    if (existingResult.rows.length === 0) {
+      // Create new postmortem
+      const insertResult = await pool.query(
+        `INSERT INTO postmortems (
+          id, incident_id, status, created_by_id
+        ) VALUES (
+          gen_random_uuid(), $1, 'draft', $2
+        ) RETURNING id`,
+        [req.params.id, userId]
+      );
+      postmortemId = insertResult.rows[0].id;
+    } else {
+      postmortemId = existingResult.rows[0].id;
+    }
+
+    // Update the specific section
+    const updates = [];
+    const values = [];
+    let paramCount = 1;
+
+    if (section === 'business_impact') {
+      if (sectionData.businessImpactApplication !== undefined) {
+        updates.push(`business_impact_application = $${paramCount++}`);
+        values.push(sectionData.businessImpactApplication);
+      }
+      if (sectionData.businessImpactStart !== undefined) {
+        updates.push(`business_impact_start = $${paramCount++}`);
+        values.push(sectionData.businessImpactStart);
+      }
+      if (sectionData.businessImpactEnd !== undefined) {
+        updates.push(`business_impact_end = $${paramCount++}`);
+        values.push(sectionData.businessImpactEnd);
+      }
+      if (sectionData.businessImpactDuration !== undefined) {
+        updates.push(`business_impact_duration = $${paramCount++}`);
+        values.push(sectionData.businessImpactDuration);
+      }
+      if (sectionData.businessImpactDescription !== undefined) {
+        updates.push(`business_impact_description = $${paramCount++}`);
+        values.push(sectionData.businessImpactDescription);
+      }
+      if (sectionData.businessImpactAffectedCountries !== undefined) {
+        updates.push(`business_impact_affected_countries = $${paramCount++}`);
+        values.push(JSON.stringify(sectionData.businessImpactAffectedCountries));
+      }
+      if (sectionData.businessImpactRegulatoryReporting !== undefined) {
+        updates.push(`business_impact_regulatory_reporting = $${paramCount++}`);
+        values.push(sectionData.businessImpactRegulatoryReporting);
+      }
+      if (sectionData.businessImpactRegulatoryEntity !== undefined) {
+        updates.push(`business_impact_regulatory_entity = $${paramCount++}`);
+        values.push(sectionData.businessImpactRegulatoryEntity);
+      }
+    } else if (section === 'mitigation') {
+      updates.push(`mitigation_description = $${paramCount++}`);
+      values.push(sectionData.mitigationDescription);
+    } else if (section === 'causal_analysis') {
+      updates.push(`causal_analysis = $${paramCount++}`);
+      values.push(JSON.stringify(sectionData.causalAnalysis));
+    }
+
+    updates.push(`updated_at = CURRENT_TIMESTAMP`);
+    values.push(postmortemId);
+
+    const updateQuery = `
+      UPDATE postmortems
+      SET ${updates.join(', ')}
+      WHERE id = $${paramCount}
+      RETURNING *
+    `;
+
+    const result = await pool.query(updateQuery, values);
+    const row = result.rows[0];
+    
+    const postmortem = {
+      id: row.id,
+      incidentId: row.incident_id,
+      status: row.status,
+      businessImpactApplication: row.business_impact_application,
+      businessImpactStart: row.business_impact_start,
+      businessImpactEnd: row.business_impact_end,
+      businessImpactDuration: row.business_impact_duration,
+      businessImpactDescription: row.business_impact_description,
+      businessImpactAffectedCountries: row.business_impact_affected_countries || [],
+      businessImpactRegulatoryReporting: row.business_impact_regulatory_reporting,
+      businessImpactRegulatoryEntity: row.business_impact_regulatory_entity,
+      mitigationDescription: row.mitigation_description,
+      causalAnalysis: row.causal_analysis || [],
+      actionItems: row.action_items || [],
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+    };
+
+    const duration = Date.now() - startTime;
+    console.log('[DEBUG] Section generation completed successfully in', duration, 'ms');
+    
+    return res.json({ section, postmortem });
+  } catch (error) {
+    const duration = Date.now() - startTime;
+    console.error('[ERROR] Section generation failed after', duration, 'ms');
+    console.error('[ERROR] Error details:', error);
+    console.error('[ERROR] Error stack:', error.stack);
+    
+    if (!res.headersSent) {
+      res.status(500).json({ error: 'Failed to generate section', details: error.message });
+    }
+  }
+});
+
+// Helper functions
+function buildBusinessImpactPrompt(incident) {
+  const services = incident.services || [];
+  
+  return `You are an expert Site Reliability Engineer writing the Business Impact section of a postmortem. Generate ONLY the business impact details based on the following incident data:
+
+**Incident Details:**
+- Incident Number: ${incident.incident_number}
+- Title: ${incident.title}
+- Description: ${incident.description}
+- Severity: ${incident.severity}
+- Started: ${incident.detected_at}
+- Resolved: ${incident.resolved_at || 'Not yet resolved'}
+- Duration: ${calculateDuration(incident.detected_at, incident.resolved_at)}
+
+**Affected Services:**
+${services.map(s => `- ${s.serviceName} (Team: ${s.teamName})`).join('\n') || 'None specified'}
+
+**Context:**
+- Impact: ${incident.impact || 'Unknown'}
+
+Generate the business impact section with this EXACT format:
+
+Application: <name of the affected application or service>
+Start Time: ${incident.detected_at}
+End Time: ${incident.resolved_at || incident.detected_at}
+Description: <A detailed 2-3 paragraph description of which specific functionalities were not available for end customers/consumers. Explain what users could not do, which features were broken, and the scope of the impact.>
+Affected Countries: ["US", "UK", "DE"]
+Regulatory Reporting: false
+Regulatory Entity: N/A
+
+IMPORTANT:
+- Application field is REQUIRED - use the service name from affected services or derive from incident title
+- Description MUST be detailed (2-3 paragraphs minimum)
+- Use actual ISO timestamps for Start Time and End Time
+- Affected Countries should be a valid JSON array
+- Be specific about user impact, not just technical details`;
+}
+
+function buildMitigationPrompt(incident) {
+  const timelineEvents = incident.timeline_events || [];
+  
+  // Summarize timeline if too long
+  let timelineSummary;
+  if (timelineEvents.length > 50) {
+    const keyEvents = timelineEvents.slice(0, 20).concat(timelineEvents.slice(-20));
+    timelineSummary = `${keyEvents.map(e => `- ${e.createdAt}: [${e.type}] ${e.description}`).join('\n')}
+... (${timelineEvents.length - 40} additional events omitted for brevity)`;
+  } else {
+    timelineSummary = timelineEvents.map(e => `- ${e.createdAt}: [${e.type}] ${e.description} (by ${e.userName})`).join('\n') || 'No timeline events recorded';
+  }
+  
+  return `You are an expert Site Reliability Engineer writing the Mitigation section of a postmortem. Generate ONLY the mitigation description based on the following incident data:
+
+**Incident Details:**
+- Title: ${incident.title}
+- Severity: ${incident.severity}
+- Duration: ${calculateDuration(incident.detected_at, incident.resolved_at)}
+
+**Timeline of Events:**
+${timelineSummary}
+
+**Resolution Context:**
+- Steps to Resolve: ${incident.steps_to_resolve || 'Not documented'}
+
+Generate a detailed mitigation description (2-4 paragraphs) that explains:
+- What immediate actions were taken to contain or resolve the incident
+- What resilience patterns were applied (circuit breakers, fallbacks, rate limiting, etc.)
+- Key decisions made and their rationale
+- How the incident was brought under control
+- Timeline of mitigation steps
+
+Be specific and technical. Focus on actions taken, not just what happened. Return ONLY the mitigation description text, no headers or formatting.`;
+}
+
+function buildCausalAnalysisPrompt(incident) {
+  const timelineEvents = incident.timeline_events || [];
+  const services = incident.services || [];
+  
+  // Summarize timeline for causal analysis
+  let timelineSummary;
+  if (timelineEvents.length > 30) {
+    const keyEvents = timelineEvents.slice(0, 15).concat(timelineEvents.slice(-15));
+    timelineSummary = `${keyEvents.map(e => `- ${e.createdAt}: [${e.type}] ${e.description}`).join('\n')}
+... (${timelineEvents.length - 30} additional events omitted)`;
+  } else {
+    timelineSummary = timelineEvents.map(e => `- ${e.createdAt}: [${e.type}] ${e.description}`).join('\n') || 'No timeline events recorded';
+  }
+  
+  return `You are an expert Site Reliability Engineer performing systemic causal analysis using the Swiss cheese model. Generate ONLY the causal analysis based on the following incident data:
+
+**Incident Details:**
+- Title: ${incident.title}
+- Description: ${incident.description}
+- Severity: ${incident.severity}
+
+**Affected Services:**
+${services.map(s => `- ${s.serviceName} (Team: ${s.teamName})`).join('\n') || 'None specified'}
+
+**Timeline Summary:**
+${timelineSummary}
+
+**Root Cause Context:**
+- Problem Statement: ${incident.problem_statement || 'Not documented'}
+- Causes: ${incident.causes || 'Under investigation'}
+
+Generate a systemic causal analysis using the Swiss cheese model. You MUST generate 2-4 causal analysis items.
+
+Format as a valid JSON array with this EXACT structure:
+[
+  {
+    "interceptionLayer": "operate",
+    "cause": "Alerting gaps",
+    "subCause": "Missing alerts for key metrics",
+    "description": "Brief explanation of this specific failure",
+    "actionItems": [
+      {
+        "description": "Specific action to address this cause",
+        "priority": "high"
+      }
+    ]
+  }
+]
+
+Valid interceptionLayer values: define, design, build, test, release, deploy, operate, response
+Valid priority values: high, medium, low
+
+IMPORTANT:
+- Generate 2-4 distinct causal analysis items covering different interception layers
+- Each item MUST have 1-3 action items
+- Action items should be specific and actionable
+- The JSON must be valid and parseable
+- Focus on systemic failures, not just immediate technical causes
+
+Return ONLY the JSON array, no other text or formatting.`;
+}
+
+function parseBusinessImpact(content, incident) {
+  const sections = {
+    businessImpactApplication: null,
+    businessImpactStart: null,
+    businessImpactEnd: null,
+    businessImpactDuration: null,
+    businessImpactDescription: null,
+    businessImpactAffectedCountries: [],
+    businessImpactRegulatoryReporting: false,
+    businessImpactRegulatoryEntity: null,
+  };
+
+  const appMatch = content.match(/Application:\s*(.+?)(?=\n|$)/i);
+  if (appMatch) {
+    sections.businessImpactApplication = appMatch[1].trim();
+  } else if (incident.services && incident.services.length > 0) {
+    sections.businessImpactApplication = incident.services[0].serviceName;
+  } else {
+    sections.businessImpactApplication = incident.title || 'Unknown Application';
+  }
+  
+  const startMatch = content.match(/Start Time:\s*(.+?)(?=\n|$)/i);
+  if (startMatch) {
+    try {
+      sections.businessImpactStart = new Date(startMatch[1].trim()).toISOString();
+    } catch (e) {
+      sections.businessImpactStart = incident.detected_at;
+    }
+  } else {
+    sections.businessImpactStart = incident.detected_at;
+  }
+  
+  const endMatch = content.match(/End Time:\s*(.+?)(?=\n|$)/i);
+  if (endMatch) {
+    try {
+      sections.businessImpactEnd = new Date(endMatch[1].trim()).toISOString();
+    } catch (e) {
+      sections.businessImpactEnd = incident.resolved_at;
+    }
+  } else {
+    sections.businessImpactEnd = incident.resolved_at;
+  }
+  
+  if (sections.businessImpactStart && sections.businessImpactEnd) {
+    const start = new Date(sections.businessImpactStart);
+    const end = new Date(sections.businessImpactEnd);
+    sections.businessImpactDuration = Math.floor((end.getTime() - start.getTime()) / 60000);
+  }
+  
+  const descMatch = content.match(/Description:\s*([\s\S]*?)(?=\nApplication:|Start Time:|End Time:|Affected Countries:|Regulatory Reporting:|Regulatory Entity:|$)/i);
+  if (descMatch) {
+    sections.businessImpactDescription = descMatch[1].trim();
+  }
+  
+  const countriesMatch = content.match(/Affected Countries:\s*(\[[\s\S]*?\])/i);
+  if (countriesMatch) {
+    try {
+      sections.businessImpactAffectedCountries = JSON.parse(countriesMatch[1]);
+    } catch (e) {
+      sections.businessImpactAffectedCountries = [];
+    }
+  }
+  
+  const regReportingMatch = content.match(/Regulatory Reporting:\s*(true|false)/i);
+  if (regReportingMatch) {
+    sections.businessImpactRegulatoryReporting = regReportingMatch[1].toLowerCase() === 'true';
+  }
+  
+  const regEntityMatch = content.match(/Regulatory Entity:\s*(.+?)(?=\n|$)/i);
+  if (regEntityMatch && sections.businessImpactRegulatoryReporting) {
+    const entity = regEntityMatch[1].trim().replace(/^["']|["']$/g, '');
+    if (entity && entity.toLowerCase() !== 'n/a') {
+      sections.businessImpactRegulatoryEntity = entity;
+    }
+  }
+
+  return sections;
+}
+
+function parseCausalAnalysis(content) {
+  let causalText = content.trim();
+  
+  try {
+    // Remove markdown code blocks if present
+    causalText = causalText.replace(/```json\s*/g, '').replace(/```\s*/g, '');
+    
+    // Try to find JSON array
+    const jsonMatch = causalText.match(/\[\s*\{[\s\S]*\}\s*\]/);
+    if (jsonMatch) {
+      const causalAnalysis = JSON.parse(jsonMatch[0]);
+      return {
+        causalAnalysis: causalAnalysis.filter(item =>
+          item.interceptionLayer && item.cause && item.description
+        )
+      };
+    }
+  } catch (e) {
+    console.error('Failed to parse causal analysis JSON:', e);
+  }
+  
+  return { causalAnalysis: [] };
+}
 
 // Helper functions
 function buildPostmortemPrompt(incident) {

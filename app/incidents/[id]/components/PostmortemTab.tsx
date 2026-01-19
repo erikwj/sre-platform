@@ -77,43 +77,82 @@ export function PostmortemTab({ incident, onRefresh }: PostmortemTabProps) {
       }
     }
 
-    console.log('[DEBUG] Starting AI generation...');
+    console.log('[DEBUG] Starting chunked AI generation...');
     setGenerating(true);
-    setGenerationStage('business_impact');
     
     try {
-      console.log('[DEBUG] Sending POST request to generate postmortem');
-      const response = await fetch(`/api/incidents/${incident.id}/postmortem`, {
+      // Generate Business Impact
+      console.log('[DEBUG] Generating business impact section...');
+      setGenerationStage('business_impact');
+      const businessImpactResponse = await fetch(`/api/incidents/${incident.id}/postmortem/generate-chunked`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          action: 'generate',
+          section: 'business_impact',
           userId: incident.incidentLead?.id || null,
         }),
       });
 
-      console.log('[DEBUG] Response status:', response.status);
-      
-      if (!response.ok) {
-        const error = await response.json();
-        console.error('[ERROR] Generation failed:', error);
-        throw new Error(error.error || 'Failed to generate postmortem');
+      if (!businessImpactResponse.ok) {
+        const error = await businessImpactResponse.json();
+        console.error('[ERROR] Business impact generation failed:', error);
+        throw new Error(error.error || 'Failed to generate business impact');
       }
 
-      // Simulate progressive stages for better UX
-      setGenerationStage('mitigation');
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      setGenerationStage('causal_analysis');
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      setGenerationStage('action_items');
-      
-      const data = await response.json();
-      console.log('[DEBUG] Generated postmortem data:', data);
-      setPostmortem(data);
+      const businessImpactData = await businessImpactResponse.json();
+      console.log('[DEBUG] Business impact generated:', businessImpactData);
+      setPostmortem(businessImpactData.postmortem);
       setHasPostmortem(true);
-      console.log('[DEBUG] State updated with generated data');
+
+      // Generate Mitigation
+      console.log('[DEBUG] Generating mitigation section...');
+      setGenerationStage('mitigation');
+      const mitigationResponse = await fetch(`/api/incidents/${incident.id}/postmortem/generate-chunked`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          section: 'mitigation',
+          userId: incident.incidentLead?.id || null,
+        }),
+      });
+
+      if (!mitigationResponse.ok) {
+        const error = await mitigationResponse.json();
+        console.error('[ERROR] Mitigation generation failed:', error);
+        throw new Error(error.error || 'Failed to generate mitigation');
+      }
+
+      const mitigationData = await mitigationResponse.json();
+      console.log('[DEBUG] Mitigation generated:', mitigationData);
+      setPostmortem(mitigationData.postmortem);
+
+      // Generate Causal Analysis
+      console.log('[DEBUG] Generating causal analysis section...');
+      setGenerationStage('causal_analysis');
+      const causalAnalysisResponse = await fetch(`/api/incidents/${incident.id}/postmortem/generate-chunked`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          section: 'causal_analysis',
+          userId: incident.incidentLead?.id || null,
+        }),
+      });
+
+      if (!causalAnalysisResponse.ok) {
+        const error = await causalAnalysisResponse.json();
+        console.error('[ERROR] Causal analysis generation failed:', error);
+        throw new Error(error.error || 'Failed to generate causal analysis');
+      }
+
+      const causalAnalysisData = await causalAnalysisResponse.json();
+      console.log('[DEBUG] Causal analysis generated:', causalAnalysisData);
+      setPostmortem(causalAnalysisData.postmortem);
+
+      // Mark as complete
+      setGenerationStage('action_items');
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      console.log('[DEBUG] All sections generated successfully');
     } catch (error) {
       console.error('[ERROR] Error generating postmortem:', error);
       alert(error instanceof Error ? error.message : 'Failed to generate postmortem');

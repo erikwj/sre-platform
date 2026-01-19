@@ -1,7 +1,7 @@
 const { Pool } = require('pg');
 
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/sre_platform',
+  connectionString: process.env.DATABASE_URL || 'postgresql://sre_user:sre_password@postgres:5432/sre_platform',
 });
 
 async function main() {
@@ -36,79 +36,337 @@ async function main() {
       userIds[user.email] = userResult.rows[0].id;
     }
 
-    // Create mock runbooks
+    // Create mock runbooks with detailed information
     const runbooks = [
       {
         serviceName: 'Payment API',
         teamName: 'Payments',
         teamEmail: 'payments@example.com',
         description: 'Handles all payment processing, including credit card transactions, refunds, and payment method management. Critical service for revenue operations.',
+        monitoringLinks: [
+          { name: 'Grafana Dashboard', url: 'https://grafana.example.com/d/payment-api' },
+          { name: 'Datadog APM', url: 'https://app.datadoghq.com/apm/service/payment-api' },
+          { name: 'PagerDuty', url: 'https://example.pagerduty.com/services/payment-api' },
+        ],
+        upstreamServices: ['User Auth API', 'Billing API'],
+        downstreamServices: ['Order Processing API', 'Notification Service'],
+        runbookProcedures: `## Common Issues
+
+### High Error Rate
+1. Check Datadog APM for error traces
+2. Verify payment gateway connectivity
+3. Check database connection pool status
+4. Review recent deployments
+
+### Slow Response Times
+1. Check database query performance
+2. Verify payment gateway response times
+3. Review connection pool metrics
+4. Check for memory leaks
+
+## Deployment
+
+### Standard Deployment
+1. Deploy to canary (10% traffic)
+2. Monitor for 15 minutes
+3. Increase to 50% if metrics are healthy
+4. Full rollout after 30 minutes
+
+### Rollback Procedure
+1. Revert to previous version via CI/CD
+2. Clear application cache
+3. Restart connection pools
+4. Verify payment processing
+
+## Health Checks
+- Endpoint: /health
+- Expected: 200 OK with {"status": "healthy"}
+- Timeout: 5 seconds`,
       },
       {
         serviceName: 'User Auth API',
         teamName: 'Identity',
         teamEmail: 'identity@example.com',
         description: 'Authentication and authorization service managing user sessions, OAuth flows, and access tokens. Handles SSO integration and multi-factor authentication.',
+        monitoringLinks: [
+          { name: 'Grafana Dashboard', url: 'https://grafana.example.com/d/auth-api' },
+          { name: 'Auth0 Dashboard', url: 'https://manage.auth0.com' },
+          { name: 'CloudWatch Logs', url: 'https://console.aws.amazon.com/cloudwatch/logs/auth-api' },
+        ],
+        upstreamServices: [],
+        downstreamServices: ['Payment API', 'Order Processing API', 'Analytics API'],
+        runbookProcedures: `## Common Issues
+
+### Login Failures
+1. Check Auth0 service status
+2. Verify OAuth configuration
+3. Check session store (Redis) connectivity
+4. Review rate limiting rules
+
+### Token Expiration Issues
+1. Verify JWT signing key rotation
+2. Check token TTL configuration
+3. Review refresh token logic
+4. Validate clock synchronization
+
+## Deployment
+Standard blue-green deployment with zero downtime.
+
+## Health Checks
+- Endpoint: /health
+- Expected: 200 OK`,
       },
       {
         serviceName: 'Notification Service',
         teamName: 'Communications',
         teamEmail: 'comms@example.com',
         description: 'Multi-channel notification delivery system supporting email, SMS, push notifications, and in-app messages.',
+        monitoringLinks: [
+          { name: 'Grafana Dashboard', url: 'https://grafana.example.com/d/notification-service' },
+          { name: 'Twilio Console', url: 'https://console.twilio.com' },
+          { name: 'SendGrid Dashboard', url: 'https://app.sendgrid.com' },
+        ],
+        upstreamServices: ['Email Service'],
+        downstreamServices: [],
+        runbookProcedures: `## Common Issues
+
+### Message Queue Backlog
+1. Check Kafka consumer lag
+2. Scale up consumer instances
+3. Verify third-party API status (Twilio, SendGrid)
+4. Review rate limits
+
+### Failed Deliveries
+1. Check provider API status
+2. Verify API credentials
+3. Review bounce/complaint rates
+4. Check message formatting
+
+## Deployment
+Rolling deployment with gradual traffic shift.`,
       },
       {
         serviceName: 'Order Processing API',
         teamName: 'Commerce',
         teamEmail: 'commerce@example.com',
         description: 'Core order management system handling order creation, updates, cancellations, and fulfillment workflows.',
+        monitoringLinks: [
+          { name: 'Grafana Dashboard', url: 'https://grafana.example.com/d/order-api' },
+          { name: 'Splunk Logs', url: 'https://splunk.example.com/app/search/order-api' },
+        ],
+        upstreamServices: ['Payment API', 'Inventory API', 'User Auth API'],
+        downstreamServices: ['Notification Service', 'Analytics API'],
+        runbookProcedures: `## Common Issues
+
+### Order Creation Failures
+1. Verify Payment API connectivity
+2. Check Inventory API stock levels
+3. Review database transaction logs
+4. Validate order schema
+
+### Fulfillment Delays
+1. Check warehouse API integration
+2. Verify shipping provider status
+3. Review order queue depth
+4. Check for stuck orders
+
+## Deployment
+Canary deployment with automated rollback.`,
       },
       {
         serviceName: 'Inventory API',
         teamName: 'Commerce',
         teamEmail: 'commerce@example.com',
         description: 'Real-time inventory management tracking stock levels, reservations, and warehouse operations.',
+        monitoringLinks: [
+          { name: 'Grafana Dashboard', url: 'https://grafana.example.com/d/inventory-api' },
+          { name: 'New Relic APM', url: 'https://one.newrelic.com/inventory-api' },
+        ],
+        upstreamServices: [],
+        downstreamServices: ['Order Processing API', 'Search API'],
+        runbookProcedures: `## Common Issues
+
+### Stock Level Discrepancies
+1. Run inventory reconciliation job
+2. Check warehouse sync status
+3. Review reservation timeouts
+4. Validate database consistency
+
+### High Latency
+1. Check database query performance
+2. Review cache hit rates
+3. Verify Redis connectivity
+4. Check for lock contention
+
+## Deployment
+Blue-green deployment with inventory freeze window.`,
       },
       {
         serviceName: 'Analytics API',
         teamName: 'Data',
         teamEmail: 'data@example.com',
         description: 'Data aggregation and analytics service providing business metrics, user behavior insights, and reporting capabilities.',
+        monitoringLinks: [
+          { name: 'Grafana Dashboard', url: 'https://grafana.example.com/d/analytics-api' },
+          { name: 'Redshift Console', url: 'https://console.aws.amazon.com/redshift' },
+        ],
+        upstreamServices: ['Order Processing API', 'User Auth API'],
+        downstreamServices: [],
+        runbookProcedures: `## Common Issues
+
+### Query Timeouts
+1. Check Redshift cluster status
+2. Review query execution plans
+3. Verify data warehouse load
+4. Check for long-running queries
+
+### Data Freshness Issues
+1. Verify ETL pipeline status
+2. Check data ingestion lag
+3. Review Kafka consumer offsets
+4. Validate data transformations
+
+## Deployment
+Standard deployment with read-only mode during updates.`,
       },
       {
         serviceName: 'Search API',
         teamName: 'Discovery',
         teamEmail: 'discovery@example.com',
         description: 'Elasticsearch-based search service providing product search, filtering, and recommendations.',
+        monitoringLinks: [
+          { name: 'Grafana Dashboard', url: 'https://grafana.example.com/d/search-api' },
+          { name: 'Elasticsearch Kibana', url: 'https://kibana.example.com' },
+        ],
+        upstreamServices: ['Inventory API'],
+        downstreamServices: ['Recommendation Engine'],
+        runbookProcedures: `## Common Issues
+
+### Search Results Empty
+1. Check Elasticsearch cluster health
+2. Verify index status
+3. Review indexing pipeline
+4. Check for mapping issues
+
+### Slow Search Performance
+1. Review query complexity
+2. Check cluster resource usage
+3. Verify shard allocation
+4. Review cache configuration
+
+## Deployment
+Rolling deployment with index warm-up.`,
       },
       {
         serviceName: 'Recommendation Engine',
         teamName: 'Discovery',
         teamEmail: 'discovery@example.com',
         description: 'Machine learning-powered recommendation system providing personalized product suggestions.',
+        monitoringLinks: [
+          { name: 'Grafana Dashboard', url: 'https://grafana.example.com/d/recommendation-engine' },
+          { name: 'SageMaker Console', url: 'https://console.aws.amazon.com/sagemaker' },
+        ],
+        upstreamServices: ['Search API', 'Analytics API'],
+        downstreamServices: [],
+        runbookProcedures: `## Common Issues
+
+### Poor Recommendation Quality
+1. Check model version deployed
+2. Verify feature data freshness
+3. Review A/B test results
+4. Validate user behavior data
+
+### High Latency
+1. Check model inference time
+2. Verify cache hit rates
+3. Review batch prediction status
+4. Check for cold start issues
+
+## Deployment
+Canary deployment with A/B testing framework.`,
       },
       {
         serviceName: 'Email Service',
         teamName: 'Communications',
         teamEmail: 'comms@example.com',
         description: 'Dedicated email delivery service managing transactional and marketing emails.',
+        monitoringLinks: [
+          { name: 'Grafana Dashboard', url: 'https://grafana.example.com/d/email-service' },
+          { name: 'SendGrid Dashboard', url: 'https://app.sendgrid.com' },
+          { name: 'Postmark Dashboard', url: 'https://account.postmarkapp.com' },
+        ],
+        upstreamServices: [],
+        downstreamServices: ['Notification Service'],
+        runbookProcedures: `## Common Issues
+
+### Email Delivery Failures
+1. Check SendGrid/Postmark status
+2. Verify API credentials
+3. Review bounce rates
+4. Check spam complaints
+
+### Template Rendering Issues
+1. Verify template syntax
+2. Check variable substitution
+3. Review template cache
+4. Validate HTML/CSS
+
+## Deployment
+Standard deployment with email queue monitoring.`,
       },
       {
         serviceName: 'Billing API',
         teamName: 'Payments',
         teamEmail: 'payments@example.com',
         description: 'Subscription and billing management service handling recurring payments, invoicing, and revenue recognition.',
+        monitoringLinks: [
+          { name: 'Grafana Dashboard', url: 'https://grafana.example.com/d/billing-api' },
+          { name: 'Stripe Dashboard', url: 'https://dashboard.stripe.com' },
+        ],
+        upstreamServices: ['Payment API'],
+        downstreamServices: ['Notification Service', 'Analytics API'],
+        runbookProcedures: `## Common Issues
+
+### Subscription Renewal Failures
+1. Check Stripe webhook status
+2. Verify payment method validity
+3. Review retry logic
+4. Check for expired cards
+
+### Invoice Generation Issues
+1. Verify billing cycle configuration
+2. Check tax calculation service
+3. Review invoice template
+4. Validate pricing data
+
+## Deployment
+Blue-green deployment with billing cycle awareness.`,
       },
     ];
 
     const runbookIds = {};
     for (const runbook of runbooks) {
       const result = await pool.query(
-        `INSERT INTO runbooks (service_name, team_name, team_email, description)
-         VALUES ($1, $2, $3, $4)
-         ON CONFLICT (service_name) DO UPDATE 
-         SET team_name = $2, team_email = $3, description = $4
-         RETURNING *`,
-        [runbook.serviceName, runbook.teamName, runbook.teamEmail, runbook.description]
+        `INSERT INTO runbooks (
+          service_name, team_name, team_email, description,
+          monitoring_links, upstream_services, downstream_services, runbook_procedures
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        ON CONFLICT (service_name) DO UPDATE
+        SET team_name = $2, team_email = $3, description = $4,
+            monitoring_links = $5, upstream_services = $6,
+            downstream_services = $7, runbook_procedures = $8
+        RETURNING *`,
+        [
+          runbook.serviceName,
+          runbook.teamName,
+          runbook.teamEmail,
+          runbook.description,
+          JSON.stringify(runbook.monitoringLinks),
+          JSON.stringify(runbook.upstreamServices),
+          JSON.stringify(runbook.downstreamServices),
+          runbook.runbookProcedures,
+        ]
       );
       console.log('Created runbook:', result.rows[0].service_name);
       runbookIds[runbook.serviceName] = result.rows[0].id;
