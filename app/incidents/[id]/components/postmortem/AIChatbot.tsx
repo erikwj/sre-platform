@@ -1,15 +1,18 @@
 import { useState } from 'react';
-import { Bot, Sparkles, X, Send, Loader2 } from 'lucide-react';
+import { Bot, Sparkles, X, Send, Loader2, Maximize2, Minimize2 } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { Postmortem } from './types';
 
-export function AIChatbot({ 
-  postmortem, 
-  incidentId 
-}: { 
-  postmortem: Postmortem; 
-  incidentId: string 
+export function AIChatbot({
+  postmortem,
+  incidentId
+}: {
+  postmortem: Postmortem;
+  incidentId: string
 }) {
   const [showChatbot, setShowChatbot] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
   const [chatMessages, setChatMessages] = useState<Array<{ role: 'user' | 'assistant'; content: string; timestamp: Date }>>([]);
   const [currentMessage, setCurrentMessage] = useState('');
@@ -74,18 +77,32 @@ export function AIChatbot({
 
       {/* Chatbot Popup */}
       {showChatbot && (
-        <div className="fixed bottom-6 right-6 w-96 h-[600px] bg-white border border-border rounded-lg shadow-2xl flex flex-col z-50">
+        <div
+          className={`fixed bottom-6 right-6 bg-white border border-border rounded-lg shadow-2xl flex flex-col z-50 transition-all duration-300 ${
+            isExpanded ? 'w-[800px] h-[80vh]' : 'w-[600px] h-[700px]'
+          }`}
+        >
           <div className="flex items-center justify-between p-4 border-b border-border bg-accent-purple text-white rounded-t-lg">
             <div className="flex items-center gap-2">
               <Sparkles className="w-5 h-5" />
               <h3 className="font-semibold">AI Assistant</h3>
             </div>
-            <button
-              onClick={() => setShowChatbot(false)}
-              className="hover:bg-purple-700 rounded p-1 transition-colors"
-            >
-              <X className="w-5 h-5" />
-            </button>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setIsExpanded(!isExpanded)}
+                className="hover:bg-purple-700 rounded p-1 transition-colors"
+                aria-label={isExpanded ? "Minimize" : "Maximize"}
+              >
+                {isExpanded ? <Minimize2 className="w-5 h-5" /> : <Maximize2 className="w-5 h-5" />}
+              </button>
+              <button
+                onClick={() => setShowChatbot(false)}
+                className="hover:bg-purple-700 rounded p-1 transition-colors"
+                aria-label="Close"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
           </div>
 
           <div className="flex-1 overflow-y-auto p-4 space-y-4">
@@ -113,7 +130,15 @@ export function AIChatbot({
                         : 'bg-background text-text-primary border border-border'
                     }`}
                   >
-                    <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                    {message.role === 'user' ? (
+                      <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                    ) : (
+                      <div className="text-sm prose prose-sm max-w-none prose-p:my-2 prose-ul:my-2 prose-ol:my-2 prose-li:my-0.5 prose-headings:my-2 prose-strong:font-semibold prose-strong:text-text-primary">
+                        <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                          {message.content}
+                        </ReactMarkdown>
+                      </div>
+                    )}
                     <p className={`text-xs mt-1 ${message.role === 'user' ? 'text-purple-200' : 'text-text-secondary'}`}>
                       {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </p>

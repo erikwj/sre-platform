@@ -692,30 +692,27 @@ function parsePostmortemSections(content, incident) {
 }
 
 function buildQualityCheckPrompt(postmortem) {
-  return `You are an expert SRE reviewing a postmortem document. Analyze the following postmortem for completeness, clarity, and quality. Provide specific, actionable feedback.
+  return `You are an expert SRE reviewing a postmortem document based on the Swiss cheese model methodology. Analyze the following postmortem for completeness, clarity, and quality. Provide specific, actionable feedback.
 
 **Postmortem Content:**
 
-**Introduction:**
-${postmortem.introduction || '(Empty)'}
+**Business Impact:**
+- Application: ${postmortem.businessImpactApplication || '(Empty)'}
+- Start Time: ${postmortem.businessImpactStart || '(Empty)'}
+- End Time: ${postmortem.businessImpactEnd || '(Empty)'}
+- Duration: ${postmortem.businessImpactDuration ? `${postmortem.businessImpactDuration} minutes` : '(Empty)'}
+- Description: ${postmortem.businessImpactDescription || '(Empty)'}
+- Affected Countries: ${JSON.stringify(postmortem.businessImpactAffectedCountries || [])}
+- Regulatory Reporting: ${postmortem.businessImpactRegulatoryReporting ? 'Yes' : 'No'}
+- Regulatory Entity: ${postmortem.businessImpactRegulatoryEntity || 'N/A'}
 
-**Timeline Summary:**
-${postmortem.timelineSummary || '(Empty)'}
+**Mitigation:**
+${postmortem.mitigationDescription || '(Empty)'}
 
-**Root Cause:**
-${postmortem.rootCause || '(Empty)'}
-
-**Impact Analysis:**
-${postmortem.impactAnalysis || '(Empty)'}
-
-**How We Fixed It:**
-${postmortem.howWeFixedIt || '(Empty)'}
-
-**Action Items:**
-${JSON.stringify(postmortem.actionItems || [], null, 2)}
-
-**Lessons Learned:**
-${postmortem.lessonsLearned || '(Empty)'}
+**Causal Analysis (Swiss Cheese Model):**
+${postmortem.causalAnalysis && postmortem.causalAnalysis.length > 0
+  ? JSON.stringify(postmortem.causalAnalysis, null, 2)
+  : '(Empty)'}
 
 ---
 
@@ -735,60 +732,89 @@ Please provide a structured quality assessment with the following format:
 Focus on:
 1. Completeness (are all sections filled with sufficient detail?)
 2. Clarity (is the writing clear and understandable?)
-3. Technical accuracy (does the root cause analysis make sense?)
-4. Actionability (are action items specific and measurable?)
-5. Learning value (does it provide insights for future prevention?)
+3. Business impact clarity (is it clear what users/customers experienced?)
+4. Mitigation detail (are the actions taken well documented?)
+5. Systemic analysis (does the causal analysis identify multiple layers of failure?)
+6. Actionability (are action items specific, measurable, and assigned to appropriate layers?)
+7. Learning value (does it provide insights for future prevention?)
 
-Be constructive and specific. Flag sections with only 1-2 sentences as insufficient.`;
+Be constructive and specific. Flag sections with only 1-2 sentences as insufficient. Evaluate whether the Swiss cheese model is properly applied with multiple interception layers identified.`;
 }
 
 function buildCoachingPrompt(question, postmortem) {
-  return `You are an expert SRE coach helping someone write a better postmortem. Answer their question with practical, actionable guidance.
+  // Count total action items across all causal analysis entries
+  const totalActionItems = postmortem.causalAnalysis?.reduce((sum, item) =>
+    sum + (item.actionItems?.length || 0), 0) || 0;
+
+  return `You are an expert SRE coach helping someone write a better postmortem using the Swiss cheese model methodology. Answer their question with practical, actionable guidance.
 
 **User's Question:**
 ${question}
 
 **Current Postmortem Context:**
-- Introduction: ${postmortem.introduction ? 'Written' : 'Empty'}
-- Root Cause: ${postmortem.rootCause ? 'Written' : 'Empty'}
-- Impact: ${postmortem.impactAnalysis ? 'Written' : 'Empty'}
-- Action Items: ${postmortem.actionItems?.length || 0} items
+This postmortem follows the Swiss cheese model approach with systemic causal analysis:
+- Business Impact: ${postmortem.businessImpactDescription ? 'Written' : 'Empty'}
+- Mitigation: ${postmortem.mitigationDescription ? 'Written' : 'Empty'}
+- Causal Analysis: ${postmortem.causalAnalysis?.length || 0} interception layers identified
+- Action Items: ${totalActionItems} items across all layers
+
+**Postmortem Structure:**
+The postmortem uses three main sections:
+1. **Business Impact** - Documents what happened from users' or business perspective (service downtime, degraded performance, affected customers, revenue impact, etc.)
+2. **Mitigation** - Describes actions, resilience patterns, or decisions taken to mitigate the incident
+3. **Causal Analysis** - Uses Swiss cheese model to identify systemic failures across multiple interception layers (define, design, build, test, release, deploy, operate, response)
 
 Provide a helpful, concise answer (2-4 paragraphs) that:
 1. Directly addresses their question
 2. Provides practical examples if relevant
-3. References best practices in incident management
+3. References the Swiss cheese model and systemic thinking
 4. Suggests how to apply this to their current postmortem
+5. Emphasizes identifying multiple layers of failure rather than a single root cause
 
-Be encouraging and educational. If they ask about specific methodologies (like Swiss Cheese Model, Five Whys, etc.), explain them clearly with examples.`;
+Be encouraging and educational. Help them understand that effective postmortems identify systemic issues across the software development lifecycle, not just immediate technical causes.`;
 }
 
 function buildExpansionPrompt(section, currentContent, postmortem) {
   const sectionNames = {
-    introduction: 'Introduction',
-    timelineSummary: 'Timeline Summary',
-    rootCause: 'Root Cause',
-    impactAnalysis: 'Impact Analysis',
-    howWeFixedIt: 'How We Fixed It',
-    lessonsLearned: 'Lessons Learned',
+    businessImpactDescription: 'Business Impact Description',
+    mitigationDescription: 'Mitigation Description',
   };
 
-  return `You are an expert SRE helping expand a postmortem section. The user wants to expand the "${sectionNames[section]}" section.
+  const sectionGuidance = {
+    businessImpactDescription: `Focus on:
+- Which specific functionalities were unavailable for end customers/consumers
+- What users could not do and which features were broken
+- The scope and scale of the impact (number of users, geographic regions, business functions)
+- Any revenue, compliance, or reputational impact`,
+    mitigationDescription: `Focus on:
+- Immediate actions taken to contain or resolve the incident
+- Resilience patterns applied (circuit breakers, fallbacks, rate limiting, etc.)
+- Key decisions made and their rationale
+- How the incident was brought under control
+- Timeline of mitigation steps`,
+  };
+
+  return `You are an expert SRE helping expand a postmortem section using the Swiss cheese model methodology. The user wants to expand the "${sectionNames[section] || section}" section.
 
 **Current Content:**
 ${currentContent || '(Empty)'}
 
 **Full Postmortem Context:**
 - Incident: ${postmortem.incidentId || 'Unknown'}
-- Other sections available for context
+- Application: ${postmortem.businessImpactApplication || 'Unknown'}
+- Duration: ${postmortem.businessImpactDuration ? `${postmortem.businessImpactDuration} minutes` : 'Unknown'}
+
+**Section Guidance:**
+${sectionGuidance[section] || 'Provide more technical detail and specificity'}
 
 Please expand this section with:
 1. More technical detail and specificity
 2. Relevant metrics or data points (if applicable)
 3. Clear, professional language
 4. 2-3 paragraphs of comprehensive content
+5. Focus on systemic understanding rather than blame
 
-Maintain the same tone and style as the original. Add substance without being verbose. Focus on providing value to future readers who want to learn from this incident.
+Maintain the same tone and style as the original. Add substance without being verbose. Focus on providing value to future readers who want to learn from this incident and prevent similar issues.
 
 Return only the expanded content, without any preamble or explanation.`;
 }
