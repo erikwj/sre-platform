@@ -8,12 +8,13 @@
     "start": "next start",
     "lint": "next lint",
     "seed": "node scripts/seed.js",
-    "setup": "node -e \"const fs = require('fs'); if (!fs.existsSync('.env')) { fs.copyFileSync('.env.example', '.env'); console.log('✅ .env file created from .env.example'); } else { console.log('ℹ️  .env file already exists, skipping...'); }\"",
+    "setup": "node scripts/setup.js",
     "docker:up": "docker compose up -d",
     "docker:down": "docker compose down",
     "docker:logs": "docker compose logs -f",
     "docker:seed": "docker compose exec frontend npm run seed",
-    "first-run": "npm run setup && npm run docker:up && echo \"⏳ Waiting for services to start...\" && node -e \"setTimeout(() => console.log('✅ Services should be ready now!'), 15000)\" && npm run docker:seed",
+    "docker:wait": "echo \"⏳ Waiting for services to start (15 seconds)...\" && node -e \"setTimeout(() => {}, 15000)\"",
+    "first-run": "npm run setup && npm run docker:up && npm run docker:wait && npm run docker:seed && node scripts/complete.js",
     "deploy": "npm run docker:up"
   },
   "dependencies": {

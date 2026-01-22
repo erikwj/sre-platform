@@ -28,17 +28,20 @@ The platform uses a **microservices architecture** with separate frontend and ba
 
 ### One-Command Setup (Recommended)
 
-For first-time setup, run this single command:
+For first-time setup, run these commands:
 
 ```bash
-npm install && npm run first-run
+npm install
+npm run first-run
 ```
 
-This will:
-- Install all dependencies
-- Create your `.env` file from `.env.example`
+The setup will:
+- **Prompt you** for your Anthropic API key (interactive)
+- Create your `.env` file with the API key configured
 - Start all Docker containers
+- Wait for services to initialize
 - Seed the database with sample data
+- Display success message with access URLs
 
 Then access the application at:
 - **Frontend:** http://localhost:3000
@@ -48,14 +51,17 @@ Then access the application at:
 ### Available Commands
 
 ```bash
-npm run setup        # Create .env file from .env.example
-npm run first-run    # Complete first-time setup (setup + docker + seed)
-npm run deploy       # Start all Docker containers
-npm run docker:up    # Start all Docker containers
-npm run docker:down  # Stop all Docker containers
-npm run docker:logs  # View container logs
-npm run docker:seed  # Seed database with sample data
+npm run setup                    # Interactive setup (prompts for API key)
+npm run first-run                # Complete first-time setup
+npm run deploy                   # Start all Docker containers
+npm run docker:up                # Start all Docker containers
+npm run docker:seed              # Seed database with sample data
+docker compose up -d --build     # Rebuild containers after code changes
+docker compose restart backend   # Restart backend after changes
+docker compose restart frontend  # Restart frontend after changes
 ```
+
+**Note:** Use Docker Desktop to view logs and stop containers.
 
 ### Prerequisites
 
