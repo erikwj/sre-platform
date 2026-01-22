@@ -24,43 +24,44 @@ The platform uses a **microservices architecture** with separate frontend and ba
 
 ## Quick Start
 
+**🚀 New to the project? Check out [SETUP.md](SETUP.md) for a complete step-by-step guide!**
+
+### One-Command Setup (Recommended)
+
+For first-time setup, run this single command:
+
+```bash
+npm install && npm run first-run
+```
+
+This will:
+- Install all dependencies
+- Create your `.env` file from `.env.example`
+- Start all Docker containers
+- Seed the database with sample data
+
+Then access the application at:
+- **Frontend:** http://localhost:3000
+- **Backend API:** http://localhost:3001
+- **MinIO Console:** http://localhost:9001
+
+### Available Commands
+
+```bash
+npm run setup        # Create .env file from .env.example
+npm run first-run    # Complete first-time setup (setup + docker + seed)
+npm run deploy       # Start all Docker containers
+npm run docker:up    # Start all Docker containers
+npm run docker:down  # Stop all Docker containers
+npm run docker:logs  # View container logs
+npm run docker:seed  # Seed database with sample data
+```
+
 ### Prerequisites
 
-- Docker and Docker Compose
-- Node.js 20+ (for local development)
-- OpenAI API key
-
-### Setup
-
-1. **Clone the repository**
-   ```bash
-   git clone <repository-url>
-   cd sre-platform
-   ```
-
-2. **Create environment file**
-   ```bash
-   cp .env.example .env
-   # Edit .env and add your ANTHROPIC_API_KEY
-   ```
-
-3. **Start with Docker Compose**
-   ```bash
-   docker-compose up -d
-   ```
-
-   This will start:
-   - PostgreSQL database (port 5432)
-   - Liquibase migrations (runs once)
-   - Backend API (port 3001)
-   - Next.js frontend (port 3000)
-   - WebSocket server (port 4000)
-   - MinIO storage (ports 9000, 9001)
-
-4. **Access the application**
-   - Frontend: http://localhost:3000
-   - Backend API: http://localhost:3001
-   - MinIO Console: http://localhost:9001
+- **Node.js** 18+ - [Download](https://nodejs.org/)
+- **Docker Desktop** - [Download](https://www.docker.com/products/docker-desktop/)
+- **Anthropic API Key** (for AI features)
 
 ### Local Development (without Docker)
 

@@ -7,7 +7,14 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "seed": "node scripts/seed.js"
+    "seed": "node scripts/seed.js",
+    "setup": "node -e \"const fs = require('fs'); if (!fs.existsSync('.env')) { fs.copyFileSync('.env.example', '.env'); console.log('✅ .env file created from .env.example'); } else { console.log('ℹ️  .env file already exists, skipping...'); }\"",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down",
+    "docker:logs": "docker compose logs -f",
+    "docker:seed": "docker compose exec frontend npm run seed",
+    "first-run": "npm run setup && npm run docker:up && echo \"⏳ Waiting for services to start...\" && node -e \"setTimeout(() => console.log('✅ Services should be ready now!'), 15000)\" && npm run docker:seed",
+    "deploy": "npm run docker:up"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.71.2",
