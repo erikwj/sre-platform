@@ -127,26 +127,8 @@ class KnowledgeGraphService {
     }
 
     try {
-      const model = this.vertexAI.preview.getGenerativeModel({
-        model: this.embeddingModel,
-      });
-
-      const request = {
-        contents: [{ role: 'user', parts: [{ text }] }],
-      };
-
-      const result = await model.generateContent(request);
-      
-      // Extract embedding from response
-      // Note: The actual API structure may vary, adjust based on Vertex AI response
-      const embedding = result.response?.candidates?.[0]?.content?.parts?.[0]?.embedding;
-      
-      if (!embedding) {
-        // Fallback: try alternative embedding endpoint
-        return await this.generateEmbeddingAlternative(text);
-      }
-
-      return embedding;
+      // Use the REST API directly for embeddings
+      return await this.generateEmbeddingAlternative(text);
     } catch (error) {
       console.error('[Knowledge Graph] Error generating embedding:', error);
       throw error;
