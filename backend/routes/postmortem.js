@@ -1,11 +1,7 @@
 const express = require('express');
 const router = express.Router({ mergeParams: true });
 const pool = require('../db');
-const Anthropic = require('@anthropic-ai/sdk');
-
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-});
+const { getAIService } = require('../services/aiService');
 
 // GET /api/incidents/:id/postmortem - Get postmortem for an incident
 router.get('/', async (req, res) => {
@@ -233,29 +229,20 @@ router.post('/', async (req, res) => {
       console.log('[DIAGNOSTIC] Prompt length:', promptLength, 'characters');
       console.log('[DIAGNOSTIC] Estimated prompt tokens:', estimatedTokens);
       
-      console.log('[DEBUG] Calling Anthropic API...');
+      console.log('[DEBUG] Calling AI API...');
       const apiCallStart = Date.now();
-      const message = await anthropic.messages.create({
-        model: 'claude-sonnet-4-5',
-        max_tokens: 8192,
-        messages: [
-          {
-            role: 'user',
-            content: prompt,
-          },
-        ],
-      });
+      const aiService = getAIService();
+      const result = await aiService.generateCompletion(prompt, 8192);
       
       const apiCallDuration = Date.now() - apiCallStart;
-      console.log('[DIAGNOSTIC] Anthropic API call took:', apiCallDuration, 'ms');
+      console.log('[DIAGNOSTIC] AI API call took:', apiCallDuration, 'ms');
+      console.log('[DIAGNOSTIC] Using provider:', aiService.getProvider(), 'model:', aiService.getModel());
 
-      const generatedContent = message.content[0].type === 'text'
-        ? message.content[0].text
-        : '';
+      const generatedContent = result.text;
 
       console.log('[DEBUG] AI response received, length:', generatedContent.length);
-      console.log('[DIAGNOSTIC] Response tokens used:', message.usage?.output_tokens || 'unknown');
-      console.log('[DIAGNOSTIC] Input tokens used:', message.usage?.input_tokens || 'unknown');
+      console.log('[DIAGNOSTIC] Response tokens used:', result.usage?.outputTokens || 'unknown');
+      console.log('[DIAGNOSTIC] Input tokens used:', result.usage?.inputTokens || 'unknown');
 
       // Parse the AI response into structured sections
       console.log('[DEBUG] Parsing AI response into sections...');
@@ -514,66 +501,23 @@ router.post('/check', async (req, res) => {
   try {
     const { action, postmortem, question, section, currentContent } = req.body;
 
+    const aiService = getAIService();
+
     if (action === 'check') {
       // AI proofreading and quality check
       const prompt = buildQualityCheckPrompt(postmortem);
-
-      const message = await anthropic.messages.create({
-        model: 'claude-sonnet-4-5',
-        max_tokens: 2048,
-        messages: [
-          {
-            role: 'user',
-            content: prompt,
-          },
-        ],
-      });
-
-      const feedback = message.content[0].type === 'text' 
-        ? message.content[0].text 
-        : '';
-
-      return res.json({ feedback });
+      const result = await aiService.generateCompletion(prompt, 2048);
+      return res.json({ feedback: result.text });
     } else if (action === 'ask') {
       // AI coaching - answer questions about postmortem methodology
       const prompt = buildCoachingPrompt(question, postmortem);
-
-      const message = await anthropic.messages.create({
-        model: 'claude-sonnet-4-5',
-        max_tokens: 1024,
-        messages: [
-          {
-            role: 'user',
-            content: prompt,
-          },
-        ],
-      });
-
-      const answer = message.content[0].type === 'text' 
-        ? message.content[0].text 
-        : '';
-
-      return res.json({ answer });
+      const result = await aiService.generateCompletion(prompt, 1024);
+      return res.json({ answer: result.text });
     } else if (action === 'expand') {
       // AI section expansion
       const prompt = buildExpansionPrompt(section, currentContent, postmortem);
-
-      const message = await anthropic.messages.create({
-        model: 'claude-sonnet-4-5',
-        max_tokens: 1024,
-        messages: [
-          {
-            role: 'user',
-            content: prompt,
-          },
-        ],
-      });
-
-      const expandedContent = message.content[0].type === 'text' 
-        ? message.content[0].text 
-        : '';
-
-      return res.json({ expandedContent });
+      const result = await aiService.generateCompletion(prompt, 1024);
+      return res.json({ expandedContent: result.text });
     }
 
     res.status(400).json({ error: 'Invalid action' });
@@ -735,29 +679,20 @@ router.post('/generate-chunked', async (req, res) => {
     console.log('[DIAGNOSTIC] Prompt length:', promptLength, 'characters');
     console.log('[DIAGNOSTIC] Estimated prompt tokens:', estimatedTokens);
     
-    console.log('[DEBUG] Calling Anthropic API for section:', section);
+    console.log('[DEBUG] Calling AI API for section:', section);
     const apiCallStart = Date.now();
-    const message = await anthropic.messages.create({
-      model: 'claude-sonnet-4-5',
-      max_tokens: maxTokens,
-      messages: [
-        {
-          role: 'user',
-          content: prompt,
-        },
-      ],
-    });
+    const aiService = getAIService();
+    const aiResult = await aiService.generateCompletion(prompt, maxTokens);
     
     const apiCallDuration = Date.now() - apiCallStart;
-    console.log('[DIAGNOSTIC] Anthropic API call took:', apiCallDuration, 'ms');
+    console.log('[DIAGNOSTIC] AI API call took:', apiCallDuration, 'ms');
+    console.log('[DIAGNOSTIC] Using provider:', aiService.getProvider(), 'model:', aiService.getModel());
 
-    const generatedContent = message.content[0].type === 'text'
-      ? message.content[0].text
-      : '';
+    const generatedContent = aiResult.text;
 
     console.log('[DEBUG] AI response received, length:', generatedContent.length);
-    console.log('[DIAGNOSTIC] Response tokens used:', message.usage?.output_tokens || 'unknown');
-    console.log('[DIAGNOSTIC] Input tokens used:', message.usage?.input_tokens || 'unknown');
+    console.log('[DIAGNOSTIC] Response tokens used:', aiResult.usage?.outputTokens || 'unknown');
+    console.log('[DIAGNOSTIC] Input tokens used:', aiResult.usage?.inputTokens || 'unknown');
 
     // Parse the section-specific response
     let sectionData;

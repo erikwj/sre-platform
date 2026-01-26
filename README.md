@@ -20,7 +20,7 @@ The platform uses a **microservices architecture** with separate frontend and ba
 - **Migrations:** Liquibase for version-controlled schema management
 - **Real-time:** Socket.io WebSocket server (port 4000)
 - **Storage:** MinIO (S3-compatible, optional, ports 9000/9001)
-- **AI:** Anthropic Claude for postmortem generation and analysis
+- **AI:** Anthropic Claude or Google Gemini for postmortem generation and analysis
 
 ## Quick Start
 
@@ -67,7 +67,9 @@ docker compose restart frontend  # Restart frontend after changes
 
 - **Node.js** 18+ - [Download](https://nodejs.org/)
 - **Docker Desktop** - [Download](https://www.docker.com/products/docker-desktop/)
-- **Anthropic API Key** (for AI features)
+- **AI Provider** (choose one):
+  - **Anthropic API Key** (recommended for development) - [Get API Key](https://console.anthropic.com/)
+  - **Google Cloud Service Account** (for sandbox environments) - See [GOOGLE_CLOUD_SETUP.md](GOOGLE_CLOUD_SETUP.md)
 
 ### Local Development (without Docker)
 
@@ -185,11 +187,27 @@ See `.env.example` for all available configuration options.
 
 Required:
 - `DATABASE_URL` - PostgreSQL connection string
-- `ANTHROPIC_API_KEY` - ANTHROPIC_API_KEY API key for AI features
+- **AI Provider** (choose one):
+  - `ANTHROPIC_API_KEY` - Anthropic Claude API key for AI features
+  - `GOOGLE_SERVICE_ACCOUNT_KEY` - Google Cloud service account JSON for Gemini API (see [GOOGLE_CLOUD_SETUP.md](GOOGLE_CLOUD_SETUP.md))
 
 Optional:
 - `WEBSOCKET_URL` - WebSocket server URL
 - `MINIO_*` - MinIO configuration
+
+## AI Provider Configuration
+
+The platform supports two AI providers:
+
+1. **Anthropic Claude** (default) - Best for development
+   - Set `ANTHROPIC_API_KEY` in your `.env` file
+   - Get your API key from [Anthropic Console](https://console.anthropic.com/)
+
+2. **Google Gemini** - Best for sandbox environments with service accounts
+   - Set `GOOGLE_SERVICE_ACCOUNT_KEY` in your `.env` file
+   - See [GOOGLE_CLOUD_SETUP.md](GOOGLE_CLOUD_SETUP.md) for detailed setup instructions
+
+The system automatically selects the provider based on which credentials are available. If both are set, Anthropic takes priority.
 
 ## Contributing
 
