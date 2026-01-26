@@ -20,6 +20,7 @@ type TimelineEvent = {
 
 type Incident = {
   id: string;
+  status: string;
   timelineEvents: TimelineEvent[];
 };
 
@@ -210,8 +211,11 @@ export function InvestigationTab({ incident, onRefresh }: InvestigationTabProps)
 
   return (
     <div className="space-y-6">
-      {/* AI Knowledge Graph Recommendations */}
-      <KnowledgeGraphRecommendations incidentId={incident.id} />
+      {/* AI Knowledge Graph Recommendations - Only show for active incidents */}
+      <KnowledgeGraphRecommendations
+        incidentId={incident.id}
+        incidentStatus={incident.status}
+      />
 
       {/* Add Update Form */}
       <div className="bg-white border border-border rounded-lg p-6">

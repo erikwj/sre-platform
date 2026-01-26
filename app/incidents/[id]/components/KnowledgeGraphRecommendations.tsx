@@ -26,11 +26,13 @@ type RecommendationsResponse = {
 
 interface KnowledgeGraphRecommendationsProps {
   incidentId: string;
+  incidentStatus: string;
   autoRefreshInterval?: number; // in milliseconds, default 15 minutes
 }
 
-export function KnowledgeGraphRecommendations({ 
-  incidentId, 
+export function KnowledgeGraphRecommendations({
+  incidentId,
+  incidentStatus,
   autoRefreshInterval = 15 * 60 * 1000 // 15 minutes
 }: KnowledgeGraphRecommendationsProps) {
   const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
@@ -87,9 +89,12 @@ export function KnowledgeGraphRecommendations({
     fetchRecommendations();
   }, [fetchRecommendations]);
 
-  // Auto-refresh interval
+  // Auto-refresh interval (only for active incidents)
   useEffect(() => {
     if (!autoRefreshInterval || autoRefreshInterval <= 0) return;
+    
+    // Don't auto-refresh for resolved or closed incidents
+    if (incidentStatus === 'resolved' || incidentStatus === 'closed') return;
 
     const intervalId = setInterval(() => {
       console.log('[Knowledge Graph] Auto-refreshing recommendations...');
@@ -97,7 +102,7 @@ export function KnowledgeGraphRecommendations({
     }, autoRefreshInterval);
 
     return () => clearInterval(intervalId);
-  }, [autoRefreshInterval, fetchRecommendations]);
+  }, [autoRefreshInterval, fetchRecommendations, incidentStatus]);
 
   const handleRefresh = () => {
     fetchRecommendations(true);
@@ -128,6 +133,11 @@ export function KnowledgeGraphRecommendations({
     if (score >= 0.4) return 'text-status-warning';
     return 'text-text-secondary';
   };
+
+  // Don't show recommendations for resolved or closed incidents
+  if (incidentStatus === 'resolved' || incidentStatus === 'closed') {
+    return null;
+  }
 
   if (loading) {
     return (
