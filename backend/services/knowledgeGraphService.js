@@ -247,7 +247,7 @@ class KnowledgeGraphService {
 
       // Calculate similarity scores
       const similarities = result.rows.map(row => {
-        const storedVector = JSON.parse(row.embedding_vector);
+        const storedVector = row.embedding_vector;
         const similarity = this.cosineSimilarity(queryEmbedding, storedVector);
 
         return {
@@ -450,18 +450,21 @@ Return ONLY the JSON array, no other text.`;
           return {
             available: true,
             cached: true,
-            recommendations: cached.rows.map(row => ({
-              id: row.id,
-              incidentId: row.recommended_incident_id,
-              incidentNumber: row.incident_number,
-              title: row.title,
-              severity: row.severity,
-              similarityScore: parseFloat(row.similarity_score),
-              recommendationText: row.recommendation_text,
-              businessImpact: row.business_impact_description,
-              mitigation: row.mitigation_description,
-              metadata: row.metadata,
-            })),
+            recommendations: cached.rows.map(row => {
+              const recData = typeof row.recommendation_text === 'string' 
+                ? JSON.parse(row.recommendation_text) 
+                : row.recommendation_text;
+              
+              return {
+                id: row.id,
+                incidentId: row.recommended_incident_id,
+                incidentNumber: row.incident_number,
+                title: row.title,
+                severity: row.severity,
+                similarityScore: parseFloat(row.similarity_score),
+                ...recData, // Spread the full recommendation data (includes details, actions, etc.)
+              };
+            }),
           };
         }
       }
@@ -501,7 +504,7 @@ Return ONLY the JSON array, no other text.`;
       // Generate AI recommendations
       const aiRecommendations = await this.generateRecommendations(incident, similarIncidents);
 
-      // Store recommendations in cache
+      // Store recommendations in cache (using upsert to handle duplicates)
       await pool.query('DELETE FROM incident_recommendations WHERE incident_id = $1', [incidentId]);
 
       for (const rec of aiRecommendations) {
@@ -513,7 +516,13 @@ Return ONLY the JSON array, no other text.`;
           await pool.query(
             `INSERT INTO incident_recommendations 
              (incident_id, recommended_incident_id, similarity_score, recommendation_text, metadata)
-             VALUES ($1, $2, $3, $4, $5)`,
+             VALUES ($1, $2, $3, $4, $5)
+             ON CONFLICT (incident_id, recommended_incident_id) 
+             DO UPDATE SET 
+               similarity_score = EXCLUDED.similarity_score,
+               recommendation_text = EXCLUDED.recommendation_text,
+               metadata = EXCLUDED.metadata,
+               updated_at = CURRENT_TIMESTAMP`,
             [
               incidentId,
               similarIncident.incidentId,

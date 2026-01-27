@@ -9,5 +9,6 @@
     <include file="changelog/changesets/001-initial-schema.xml"/>
     <include file="changelog/changesets/003-postmortem-swiss-cheese-schema.xml"/>
     <include file="changelog/changesets/004-knowledge-graph-schema.xml"/>
+    <include file="changelog/changesets/005-add-postmortem-embeddings-unique-constraint.xml"/>
 
 </databaseChangeLog>

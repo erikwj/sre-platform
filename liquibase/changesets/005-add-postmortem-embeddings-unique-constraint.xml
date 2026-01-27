@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <changeSet id="005-1-add-unique-constraint-postmortem-embeddings" author="system">
+        <comment>Add unique constraint on postmortem_id to support ON CONFLICT in upsert operations</comment>
+        <addUniqueConstraint
+            tableName="postmortem_embeddings"
+            columnNames="postmortem_id"
+            constraintName="uq_postmortem_embeddings_postmortem_id"/>
+    </changeSet>
+
+</databaseChangeLog>
