@@ -25,7 +25,7 @@ The platform uses a **microservices architecture** with separate frontend and ba
 
 ## Quick Start
 
-**🚀 New to the project? Check out [SETUP.md](SETUP.md) for a complete step-by-step guide!**
+**🚀 New to the project? Check out [SETUP.md](docs/SETUP.md) for a complete step-by-step guide!**
 
 ### One-Command Setup (Recommended)
 

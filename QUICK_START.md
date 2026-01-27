@@ -47,4 +47,4 @@ docker compose restart liquibase  # Re-run migrations
 
 ## Need Help?
 
-See [SETUP.md](SETUP.md) for detailed instructions.
+See [SETUP.md](docs/SETUP.md) for detailed instructions.
