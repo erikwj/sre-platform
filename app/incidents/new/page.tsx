@@ -25,6 +25,7 @@ export default function NewIncidentPage() {
   const [importFromSnow, setImportFromSnow] = useState(true);
   const [isLoadingSnowData, setIsLoadingSnowData] = useState(false);
   const [incidentNumberInput, setIncidentNumberInput] = useState('');
+  const [snowSysId, setSnowSysId] = useState<string | null>(null);
 
   const {
     register,
@@ -59,10 +60,12 @@ export default function NewIncidentPage() {
           const data = await response.json();
           setValue('title', data.short_description || '');
           setValue('description', data.description || '');
+          setSnowSysId(data.sys_id || null);
         } else if (response.status === 404) {
           // Incident not found, clear fields but don't show error
           setValue('title', '');
           setValue('description', '');
+          setSnowSysId(null);
         } else {
           const errorData = await response.json();
           setError(errorData.error || 'Failed to fetch incident from ServiceNow');
@@ -93,7 +96,10 @@ export default function NewIncidentPage() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(data),
+        body: JSON.stringify({
+          ...data,
+          snowSysId: importFromSnow ? snowSysId : null,
+        }),
       });
 
       if (!response.ok) {

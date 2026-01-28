@@ -360,12 +360,6 @@ export function InvestigationTab({ incident, onRefresh }: InvestigationTabProps)
           <h3 className="text-sm font-semibold text-text-primary">
             Activity Timeline (to and from SNOW)
           </h3>
-          <button
-            onClick={onRefresh}
-            className="text-text-secondary hover:text-text-primary transition-colors"
-          >
-            <RefreshCw className="w-4 h-4" />
-          </button>
         </div>
 
         <div className="space-y-8">
@@ -421,7 +415,7 @@ export function InvestigationTab({ incident, onRefresh }: InvestigationTabProps)
                               }}
                             />
                             <div className="flex items-center gap-2 mt-1">
-                              {event.user && (
+                              {event.user && event.user.name ? (
                                 <>
                                   <div className="w-5 h-5 bg-accent-purple/10 rounded-full flex items-center justify-center">
                                     <span className="text-xs font-medium text-accent-purple">
@@ -432,6 +426,22 @@ export function InvestigationTab({ incident, onRefresh }: InvestigationTabProps)
                                     {event.user.name}
                                   </span>
                                 </>
+                              ) : event.metadata?.createdBy ? (
+                                <>
+                                  <div className="w-5 h-5 bg-blue-100 rounded-full flex items-center justify-center">
+                                    <span className="text-xs font-medium text-blue-600">
+                                      S
+                                    </span>
+                                  </div>
+                                  <span className="text-xs text-text-secondary">
+                                    {event.metadata.createdBy} (ServiceNow)
+                                  </span>
+                                </>
+                              ) : null}
+                              {event.metadata?.source === 'servicenow' && (
+                                <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded">
+                                  {event.metadata.label || 'ServiceNow'}
+                                </span>
                               )}
                               <span className="text-xs text-text-secondary">
                                 via @incident

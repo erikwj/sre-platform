@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const pool = require('../db');
+const serviceNowService = require('../services/serviceNowService');
 
 // GET /api/incidents - List all incidents
 router.get('/', async (req, res) => {
@@ -65,7 +66,7 @@ router.post('/', async (req, res) => {
   const client = await pool.connect();
   
   try {
-    const { incidentNumber, title, description, severity, incidentLead } = req.body;
+    const { incidentNumber, title, description, severity, incidentLead, snowSysId } = req.body;
 
     // Validate required fields
     if (!incidentNumber || !title || !description || !severity) {
@@ -95,10 +96,11 @@ router.post('/', async (req, res) => {
     const incidentResult = await client.query(
       `INSERT INTO incidents (
         incident_number, title, description, severity, status,
-        incident_lead_id, reporter_id, detected_at, impact, problem_statement
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), $8, $9)
+        incident_lead_id, reporter_id, detected_at, impact, problem_statement,
+        snow_sys_id, snow_number
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), $8, $9, $10, $11)
       RETURNING *`,
-      [incidentNumber, title, description, severity, 'active', user.id, user.id, 'Unknown', description]
+      [incidentNumber, title, description, severity, 'active', user.id, user.id, 'Unknown', description, snowSysId || null, snowSysId ? incidentNumber : null]
     );
 
     const incident = incidentResult.rows[0];
@@ -117,6 +119,39 @@ router.post('/', async (req, res) => {
     );
 
     await client.query('COMMIT');
+
+    // If we have a ServiceNow sys_id, sync activities
+    if (snowSysId && serviceNowService.isEnabled()) {
+      try {
+        const activities = await serviceNowService.getIncidentActivity(snowSysId);
+        
+        // Insert activities as timeline events
+        for (const activity of activities) {
+          const eventType = activity.activityType === 'work_notes' ? 'Work Note' : 'Comment';
+          await pool.query(
+            `INSERT INTO timeline_events (incident_id, event_type, description, created_at, metadata)
+             VALUES ($1, $2, $3, $4, $5)`,
+            [
+              incident.id,
+              'snow_activity',
+              activity.value,
+              activity.createdAt,
+              JSON.stringify({
+                snowSysId: activity.snowSysId,
+                activityType: activity.activityType,
+                createdBy: activity.createdBy,
+                source: 'servicenow',
+                label: eventType,
+              })
+            ]
+          );
+        }
+        console.log(`Synced ${activities.length} activities from ServiceNow for incident ${incident.id}`);
+      } catch (activityError) {
+        console.error('Error syncing ServiceNow activities during creation:', activityError);
+        // Don't fail the incident creation if activity sync fails
+      }
+    }
 
     // Fetch complete incident with relations
     const completeIncident = await client.query(
@@ -225,6 +260,8 @@ router.get('/:id', async (req, res) => {
       impact: incident.impact,
       causes: incident.causes,
       stepsToResolve: incident.steps_to_resolve,
+      snowSysId: incident.snow_sys_id,
+      snowNumber: incident.snow_number,
       incidentLead: incident.incident_lead,
       reporter: incident.reporter,
       timelineEvents: incident.timeline_events,
@@ -548,6 +585,86 @@ router.delete('/:id/actions/:actionId', async (req, res) => {
   } catch (error) {
     console.error('Error deleting action item:', error);
     res.status(500).json({ error: 'Failed to delete action item' });
+  }
+});
+
+// Sync activities from ServiceNow
+router.post('/:id/sync-snow-activities', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Get incident and check if it has a snow_sys_id
+    const incidentResult = await pool.query(
+      'SELECT id, snow_sys_id, snow_number FROM incidents WHERE id = $1',
+      [id]
+    );
+
+    if (incidentResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Incident not found' });
+    }
+
+    const incident = incidentResult.rows[0];
+
+    if (!incident.snow_sys_id) {
+      return res.status(400).json({ error: 'Incident does not have a ServiceNow sys_id' });
+    }
+
+    if (!serviceNowService.isEnabled()) {
+      return res.status(503).json({ error: 'ServiceNow integration is not enabled' });
+    }
+
+    // Fetch activities from ServiceNow
+    const activities = await serviceNowService.getIncidentActivity(incident.snow_sys_id);
+
+    // Get existing SNOW activity sys_ids to avoid duplicates
+    const existingResult = await pool.query(
+      `SELECT metadata->>'snowSysId' as snow_sys_id 
+       FROM timeline_events 
+       WHERE incident_id = $1 
+       AND event_type = 'snow_activity'
+       AND metadata->>'snowSysId' IS NOT NULL`,
+      [id]
+    );
+
+    const existingSysIds = new Set(existingResult.rows.map(r => r.snow_sys_id));
+
+    // Filter out activities we already have
+    const newActivities = activities.filter(a => !existingSysIds.has(a.snowSysId));
+
+    // Insert new activities as timeline events
+    const insertedEvents = [];
+    for (const activity of newActivities) {
+      const eventType = activity.activityType === 'work_notes' ? 'Work Note' : 'Comment';
+      const result = await pool.query(
+        `INSERT INTO timeline_events (incident_id, event_type, description, created_at, metadata)
+         VALUES ($1, $2, $3, $4, $5)
+         RETURNING *`,
+        [
+          id,
+          'snow_activity',
+          activity.value,
+          activity.createdAt,
+          JSON.stringify({
+            snowSysId: activity.snowSysId,
+            activityType: activity.activityType,
+            createdBy: activity.createdBy,
+            source: 'servicenow',
+            label: eventType,
+          })
+        ]
+      );
+      insertedEvents.push(result.rows[0]);
+    }
+
+    res.json({
+      success: true,
+      synced: insertedEvents.length,
+      total: activities.length,
+      events: insertedEvents,
+    });
+  } catch (error) {
+    console.error('Error syncing ServiceNow activities:', error);
+    res.status(500).json({ error: 'Failed to sync activities from ServiceNow' });
   }
 });
 

@@ -306,6 +306,37 @@ class ServiceNowService {
 
     return results;
   }
+
+  /**
+   * Get activity log (journal entries) for an incident
+   */
+  async getIncidentActivity(sysId) {
+    if (!this.enabled) {
+      throw new Error('ServiceNow integration is not enabled');
+    }
+
+    try {
+      const response = await this.client.get('/table/sys_journal_field', {
+        params: {
+          sysparm_query: `element_id=${sysId}^element=work_notes^ORelement=comments^ORDERBYsys_created_on`,
+          sysparm_fields: 'sys_id,element,value,sys_created_by,sys_created_on,name',
+          sysparm_display_value: 'true',
+        },
+      });
+
+      return response.data.result.map(activity => ({
+        snowSysId: activity.sys_id,
+        activityType: activity.element,
+        value: activity.value,
+        createdBy: activity.sys_created_by,
+        createdAt: activity.sys_created_on,
+        incidentNumber: activity.name,
+      }));
+    } catch (error) {
+      console.error('Error fetching ServiceNow activity log:', error.response?.data || error.message);
+      throw error;
+    }
+  }
 }
 
 module.exports = new ServiceNowService();

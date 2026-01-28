@@ -27,6 +27,8 @@ type Incident = {
   impact?: string;
   causes?: string;
   stepsToResolve?: string;
+  snowSysId?: string;
+  snowNumber?: string;
   incidentLead?: {
     id: string;
     name: string;
@@ -54,6 +56,43 @@ export default function IncidentDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>('overview');
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+
+  // Auto-sync ServiceNow activities every 30 seconds
+  useEffect(() => {
+    if (!incident?.id || !incident.snowSysId) return;
+
+    const syncActivities = async () => {
+      if (isSyncing) return;
+      
+      setIsSyncing(true);
+      try {
+        const response = await fetch(`/api/incidents/${incident.id}/sync-snow-activities`, {
+          method: 'POST',
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          // If new activities were synced, refresh the incident data
+          if (data.synced > 0) {
+            fetchIncident();
+          }
+        }
+      } catch (error) {
+        console.error('Error syncing SNOW activities:', error);
+      } finally {
+        setIsSyncing(false);
+      }
+    };
+
+    // Initial sync
+    syncActivities();
+
+    // Set up interval for periodic sync
+    const interval = setInterval(syncActivities, 30000); // 30 seconds
+
+    return () => clearInterval(interval);
+  }, [incident?.id, incident?.snowSysId]);
 
   useEffect(() => {
     fetchIncident();
