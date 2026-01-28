@@ -10,5 +10,6 @@
     <include file="changelog/changesets/003-postmortem-swiss-cheese-schema.xml"/>
     <include file="changelog/changesets/004-knowledge-graph-schema.xml"/>
     <include file="changelog/changesets/005-add-postmortem-embeddings-unique-constraint.xml"/>
+    <include file="changelog/changesets/006-servicenow-integration.xml"/>
 
 </databaseChangeLog>

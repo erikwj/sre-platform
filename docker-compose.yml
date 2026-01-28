@@ -58,6 +58,9 @@ services:
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
       NODE_ENV: development
       PORT: 3001
+      SERVICENOW_INSTANCE_URL: ${SERVICENOW_INSTANCE_URL}
+      SERVICENOW_USERNAME: ${SERVICENOW_USERNAME}
+      SERVICENOW_PASSWORD: ${SERVICENOW_PASSWORD}
     volumes:
       - ./backend:/app
       - /app/node_modules

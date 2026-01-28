@@ -1,12 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import Link from 'next/link';
-import { AlertCircle, X } from 'lucide-react';
+import { AlertCircle, X, Loader2 } from 'lucide-react';
 
 const incidentSchema = z.object({
   incidentNumber: z.string().min(1, 'Incident number is required'),
@@ -22,11 +22,16 @@ export default function NewIncidentPage() {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [importFromSnow, setImportFromSnow] = useState(true);
+  const [isLoadingSnowData, setIsLoadingSnowData] = useState(false);
+  const [incidentNumberInput, setIncidentNumberInput] = useState('');
 
   const {
     register,
     handleSubmit,
     formState: { errors },
+    setValue,
+    watch,
   } = useForm<IncidentFormData>({
     resolver: zodResolver(incidentSchema),
     defaultValues: {
@@ -34,6 +39,49 @@ export default function NewIncidentPage() {
       incidentLead: 'Manager on Duty', // Auto-populate for demo
     },
   });
+
+  const incidentNumber = watch('incidentNumber');
+
+  // Fetch incident details from ServiceNow when incident number changes
+  useEffect(() => {
+    const fetchSnowData = async () => {
+      if (!incidentNumber || !importFromSnow || incidentNumber.length < 5) {
+        return;
+      }
+
+      setIsLoadingSnowData(true);
+      setError(null);
+
+      try {
+        const response = await fetch(`/api/servicenow/incident-by-number/${encodeURIComponent(incidentNumber)}`);
+        
+        if (response.ok) {
+          const data = await response.json();
+          setValue('title', data.short_description || '');
+          setValue('description', data.description || '');
+        } else if (response.status === 404) {
+          // Incident not found, clear fields but don't show error
+          setValue('title', '');
+          setValue('description', '');
+        } else {
+          const errorData = await response.json();
+          setError(errorData.error || 'Failed to fetch incident from ServiceNow');
+        }
+      } catch (err) {
+        console.error('Error fetching ServiceNow data:', err);
+        setError('Failed to connect to ServiceNow');
+      } finally {
+        setIsLoadingSnowData(false);
+      }
+    };
+
+    // Debounce the API call
+    const timeoutId = setTimeout(() => {
+      fetchSnowData();
+    }, 800);
+
+    return () => clearTimeout(timeoutId);
+  }, [incidentNumber, importFromSnow, setValue]);
 
   const onSubmit = async (data: IncidentFormData) => {
     setIsSubmitting(true);
@@ -131,6 +179,32 @@ export default function NewIncidentPage() {
               </div>
             )}
 
+            {/* Import from ServiceNow Toggle */}
+            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-border">
+              <div className="flex-1">
+                <label htmlFor="importToggle" className="text-sm font-medium text-text-primary">
+                  Import details from ServiceNow?
+                </label>
+                <p className="text-xs text-text-secondary mt-1">
+                  Automatically fill title and description from ServiceNow incident
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setImportFromSnow(!importFromSnow)}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-status-info focus:ring-offset-2 ${
+                  importFromSnow ? 'bg-status-info' : 'bg-gray-300'
+                }`}
+                id="importToggle"
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                    importFromSnow ? 'translate-x-6' : 'translate-x-1'
+                  }`}
+                />
+              </button>
+            </div>
+
             {/* Incident Number */}
             <div>
               <label
@@ -139,16 +213,28 @@ export default function NewIncidentPage() {
               >
                 Incident Number <span className="text-status-critical">*</span>
               </label>
-              <input
-                {...register('incidentNumber')}
-                type="text"
-                id="incidentNumber"
-                placeholder="INC-XXXXXX (from ServiceNow)"
-                className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-status-info focus:border-transparent"
-              />
+              <div className="relative">
+                <input
+                  {...register('incidentNumber')}
+                  type="text"
+                  id="incidentNumber"
+                  placeholder="INC-XXXXXX (from ServiceNow)"
+                  className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-status-info focus:border-transparent"
+                />
+                {isLoadingSnowData && (
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                    <Loader2 className="w-5 h-5 text-status-info animate-spin" />
+                  </div>
+                )}
+              </div>
               {errors.incidentNumber && (
                 <p className="mt-1 text-sm text-status-critical">
                   {errors.incidentNumber.message}
+                </p>
+              )}
+              {importFromSnow && (
+                <p className="mt-1 text-xs text-text-secondary">
+                  Enter ServiceNow incident number to auto-fill details
                 </p>
               )}
             </div>
@@ -166,7 +252,8 @@ export default function NewIncidentPage() {
                 type="text"
                 id="title"
                 placeholder="Brief description of the incident"
-                className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-status-info focus:border-transparent"
+                disabled={importFromSnow && isLoadingSnowData}
+                className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-status-info focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
               />
               {errors.title && (
                 <p className="mt-1 text-sm text-status-critical">
@@ -188,7 +275,8 @@ export default function NewIncidentPage() {
                 id="description"
                 rows={4}
                 placeholder="What is happening? What services are affected?"
-                className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-status-info focus:border-transparent resize-none"
+                disabled={importFromSnow && isLoadingSnowData}
+                className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-status-info focus:border-transparent resize-none disabled:bg-gray-100 disabled:cursor-not-allowed"
               />
               {errors.description && (
                 <p className="mt-1 text-sm text-status-critical">

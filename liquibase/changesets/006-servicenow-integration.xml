@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.25.xsd">
+
+    <changeSet id="006-add-servicenow-columns" author="sre-platform">
+        <addColumn tableName="incidents">
+            <column name="snow_sys_id" type="varchar(50)">
+                <constraints unique="true"/>
+            </column>
+            <column name="snow_number" type="varchar(50)">
+                <constraints unique="true"/>
+            </column>
+        </addColumn>
+        <createIndex tableName="incidents" indexName="idx_incidents_snow_sys_id">
+            <column name="snow_sys_id"/>
+        </createIndex>
+        <createIndex tableName="incidents" indexName="idx_incidents_snow_number">
+            <column name="snow_number"/>
+        </createIndex>
+    </changeSet>
+
+</databaseChangeLog>

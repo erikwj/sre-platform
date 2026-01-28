@@ -95,10 +95,10 @@ router.post('/', async (req, res) => {
     const incidentResult = await client.query(
       `INSERT INTO incidents (
         incident_number, title, description, severity, status,
-        incident_lead_id, reporter_id, detected_at, impact
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), $8)
+        incident_lead_id, reporter_id, detected_at, impact, problem_statement
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), $8, $9)
       RETURNING *`,
-      [incidentNumber, title, description, severity, 'active', user.id, user.id, 'Unknown']
+      [incidentNumber, title, description, severity, 'active', user.id, user.id, 'Unknown', description]
     );
 
     const incident = incidentResult.rows[0];
