@@ -1,10 +1,11 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { AlertCircle, ChevronRight, Clock, Users, Link2, Tag } from 'lucide-react';
+import { AlertCircle, ChevronRight, Clock, Users, Link2, Tag, Trash2 } from 'lucide-react';
 import { StatusBadge } from '@/app/components/StatusBadge';
+import { ConfirmationModal } from '@/app/components/ConfirmationModal';
 import { formatDuration, formatRelativeTime } from '@/lib/utils';
 import { OverviewTab } from './components/OverviewTab';
 import { InvestigationTab } from './components/InvestigationTab';
@@ -47,10 +48,12 @@ type Tab = 'overview' | 'investigation' | 'postmortem';
 
 export default function IncidentDetailPage() {
   const params = useParams();
+  const router = useRouter();
   const [incident, setIncident] = useState<Incident | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>('overview');
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   useEffect(() => {
     fetchIncident();
@@ -85,6 +88,19 @@ export default function IncidentDetailPage() {
       setIncident((prev) => (prev ? { ...prev, ...updated } : null));
     } catch (err) {
       console.error('Error updating incident:', err);
+    }
+  };
+
+  const deleteIncident = async () => {
+    try {
+      const response = await fetch(`/api/incidents/${params.id}`, {
+        method: 'DELETE',
+      });
+      if (!response.ok) throw new Error('Failed to delete incident');
+      router.push('/incidents');
+    } catch (err) {
+      console.error('Error deleting incident:', err);
+      alert('Failed to delete incident. Please try again.');
     }
   };
 
@@ -189,6 +205,13 @@ export default function IncidentDetailPage() {
               </div>
               <h1 className="text-3xl font-bold text-text-primary">{incident.title}</h1>
             </div>
+            <button
+              onClick={() => setShowDeleteModal(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-status-critical text-white font-medium rounded-lg hover:bg-red-600 transition-colors"
+            >
+              <Trash2 className="w-4 h-4" />
+              Delete Incident
+            </button>
           </div>
 
           {/* Tabs */}
@@ -353,6 +376,17 @@ export default function IncidentDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
+        onConfirm={deleteIncident}
+        title="Delete Incident"
+        message={`Are you sure you want to delete incident ${incident.incidentNumber}? This will permanently remove all associated data including postmortem, timeline events, and action items from the platform. This action cannot be undone.`}
+        confirmText="Delete Incident"
+        cancelText="Cancel"
+      />
     </div>
   );
 }

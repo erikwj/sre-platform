@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { AlertCircle, Plus, Clock } from 'lucide-react';
+import { AlertCircle, Plus, Clock, Trash2 } from 'lucide-react';
 import { StatusBadge } from '@/app/components/StatusBadge';
+import { ConfirmationModal } from '@/app/components/ConfirmationModal';
 import { formatRelativeTime, formatDuration } from '@/lib/utils';
 
 type Incident = {
@@ -29,6 +30,10 @@ export default function IncidentsPage() {
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<string>('all');
+  const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; incident: Incident | null }>({
+    isOpen: false,
+    incident: null,
+  });
 
   useEffect(() => {
     fetchIncidents();
@@ -48,6 +53,20 @@ export default function IncidentsPage() {
       console.error('Error fetching incidents:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const deleteIncident = async (incidentId: string) => {
+    try {
+      const response = await fetch(`/api/incidents/${incidentId}`, {
+        method: 'DELETE',
+      });
+      if (!response.ok) throw new Error('Failed to delete incident');
+      // Refresh the list
+      fetchIncidents();
+    } catch (error) {
+      console.error('Error deleting incident:', error);
+      alert('Failed to delete incident. Please try again.');
     }
   };
 
@@ -142,13 +161,15 @@ export default function IncidentsPage() {
         ) : (
           <div className="space-y-4">
             {incidents.map((incident) => (
-              <Link
+              <div
                 key={incident.id}
-                href={`/incidents/${incident.id}`}
                 className="block bg-white border border-border rounded-lg p-6 hover:border-status-info transition-colors"
               >
                 <div className="flex items-start justify-between">
-                  <div className="flex-1">
+                  <Link
+                    href={`/incidents/${incident.id}`}
+                    className="flex-1"
+                  >
                     <div className="flex items-center gap-3 mb-2">
                       <span className="text-sm font-mono text-text-secondary">
                         {incident.incidentNumber}
@@ -197,12 +218,41 @@ export default function IncidentsPage() {
                         {incident._count.actionItems} actions
                       </span>
                     </div>
-                  </div>
+                  </Link>
+                  <button
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setDeleteModal({ isOpen: true, incident });
+                    }}
+                    className="ml-4 p-2 text-status-critical hover:bg-red-50 rounded-lg transition-colors"
+                    title="Delete incident"
+                  >
+                    <Trash2 className="w-5 h-5" />
+                  </button>
                 </div>
-              </Link>
+              </div>
             ))}
           </div>
         )}
+
+        {/* Delete Confirmation Modal */}
+        <ConfirmationModal
+          isOpen={deleteModal.isOpen}
+          onClose={() => setDeleteModal({ isOpen: false, incident: null })}
+          onConfirm={() => {
+            if (deleteModal.incident) {
+              deleteIncident(deleteModal.incident.id);
+            }
+          }}
+          title="Delete Incident"
+          message={
+            deleteModal.incident
+              ? `Are you sure you want to delete incident ${deleteModal.incident.incidentNumber}? This will permanently remove all associated data including postmortem, timeline events, and action items from the platform. This action cannot be undone.`
+              : ''
+          }
+          confirmText="Delete Incident"
+          cancelText="Cancel"
+        />
       </main>
     </div>
   );
