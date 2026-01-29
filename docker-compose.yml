@@ -5,6 +5,7 @@ services:
   postgres:
     image: postgres:16-alpine
     container_name: sre-platform-db
+    restart: unless-stopped
     environment:
       POSTGRES_USER: sre_user
       POSTGRES_PASSWORD: sre_password
@@ -46,6 +47,7 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     container_name: sre-platform-backend
+    restart: unless-stopped
     depends_on:
       postgres:
         condition: service_healthy
@@ -73,6 +75,7 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: sre-platform-frontend
+    restart: unless-stopped
     depends_on:
       - backend
     ports:
@@ -93,6 +96,7 @@ services:
       context: .
       dockerfile: Dockerfile.websocket
     container_name: sre-platform-websocket
+    restart: unless-stopped
     depends_on:
       - postgres
     ports:
@@ -108,6 +112,7 @@ services:
   minio:
     image: minio/minio:latest
     container_name: sre-platform-minio
+    restart: unless-stopped
     ports:
       - "9000:9000"
       - "9001:9001"
@@ -127,6 +132,7 @@ services:
   pgadmin:
     image: dpage/pgadmin4:latest
     container_name: sre-platform-pgadmin
+    restart: unless-stopped
     depends_on:
       - postgres
     ports:
