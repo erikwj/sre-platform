@@ -9,6 +9,7 @@
     "lint": "next lint",
     "seed": "node scripts/seed.js",
     "setup": "node scripts/setup.js",
+    "encrypt": "node scripts/encrypt-env.js",
     "docker:up": "docker compose up -d",
     "docker:down": "docker compose down",
     "docker:logs": "docker compose logs -f",
