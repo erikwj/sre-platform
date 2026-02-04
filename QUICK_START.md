@@ -3,11 +3,15 @@
 ## First Time Setup
 
 ```bash
-npm install
 npm run first-run
 ```
 
-You'll be prompted for your Anthropic API key during setup.
+During setup, you'll be prompted for:
+- **Decryption password** (if using encrypted values)
+- **Anthropic API key** (optional - for Claude AI)
+- **Google service account JSON** (optional - for Gemini AI & Knowledge Graph)
+
+The setup will create an empty `google-service-account-key.json` file for you. Simply paste your JSON into it when prompted, save, and continue.
 
 ## Access URLs
 

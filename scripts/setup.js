@@ -42,6 +42,7 @@ function question(query, hidden = false) {
   });
 }
 
+
 function decrypt(encryptedText, password) {
   try {
     // Format: enc:iv:encrypted
@@ -140,6 +141,100 @@ async function setup() {
     console.log('   ✅ API key configured');
   } else {
     console.log('   ⚠️  Skipped - You can add it later in the .env file');
+  }
+
+  // Ask for Google service account JSON
+  console.log('\n🔑 Google Cloud Service Account (Optional)\n');
+  console.log('   If you want to use Google Gemini AI or Knowledge Graph features,');
+  console.log('   you need to provide your service account JSON.\n');
+  
+  const useServiceAccount = await question('   Do you want to configure Google service account now? (y/N): ');
+  
+  if (useServiceAccount.toLowerCase() === 'y') {
+    const serviceAccountPath = 'google-service-account-key.json';
+    const backendServiceAccountPath = 'backend/google-service-account-key.json';
+    
+    // Step 1: Clean up any existing files/directories
+    if (fs.existsSync(serviceAccountPath)) {
+      const stats = fs.statSync(serviceAccountPath);
+      if (stats.isDirectory()) {
+        fs.rmdirSync(serviceAccountPath, { recursive: true });
+        console.log('   🗑️  Removed existing directory');
+      } else {
+        fs.unlinkSync(serviceAccountPath);
+        console.log('   🗑️  Removed existing file');
+      }
+    }
+    
+    if (fs.existsSync(backendServiceAccountPath)) {
+      const stats = fs.statSync(backendServiceAccountPath);
+      if (stats.isDirectory()) {
+        fs.rmdirSync(backendServiceAccountPath, { recursive: true });
+        console.log('   🗑️  Removed existing backend directory');
+      } else {
+        fs.unlinkSync(backendServiceAccountPath);
+        console.log('   🗑️  Removed existing backend file');
+      }
+    }
+    
+    // Step 2: Create empty file
+    fs.writeFileSync(serviceAccountPath, '');
+    console.log('\n   ✅ Created empty file: google-service-account-key.json');
+    console.log('\n   📋 Please follow these steps:');
+    console.log('   1. Open google-service-account-key.json in your editor');
+    console.log('   2. Paste your Google service account JSON into the file');
+    console.log('   3. Save the file');
+    console.log('   4. Come back here and press Enter to continue\n');
+    
+    // Step 3: Wait for user to paste content
+    await question('   Press Enter when you have pasted and saved the JSON... ');
+    
+    // Step 4: Validate the file
+    try {
+      const content = fs.readFileSync(serviceAccountPath, 'utf8');
+      
+      if (!content || content.trim() === '') {
+        throw new Error('File is empty');
+      }
+      
+      const parsed = JSON.parse(content);
+      
+      if (!parsed.type || !parsed.project_id || !parsed.private_key) {
+        throw new Error('Missing required fields (type, project_id, private_key)');
+      }
+      
+      // Reformat the JSON nicely
+      fs.writeFileSync(serviceAccountPath, JSON.stringify(parsed, null, 2));
+      
+      console.log('\n   ✅ Google service account key validated and formatted');
+      console.log(`   🔑 Project: ${parsed.project_id}`);
+    } catch (error) {
+      console.log(`\n   ⚠️  Invalid service account file: ${error.message}`);
+      console.log('   ⚠️  The file was created but contains invalid JSON');
+      console.log('   ⚠️  Please fix it manually before starting Docker');
+    }
+  } else {
+    console.log('   ℹ️  Skipped - You can add google-service-account-key.json later');
+    
+    // Clean up any existing directories that might block Docker
+    const serviceAccountPath = 'google-service-account-key.json';
+    const backendServiceAccountPath = 'backend/google-service-account-key.json';
+    
+    if (fs.existsSync(serviceAccountPath)) {
+      const stats = fs.statSync(serviceAccountPath);
+      if (stats.isDirectory()) {
+        fs.rmdirSync(serviceAccountPath, { recursive: true });
+        console.log('   🗑️  Removed existing directory (was blocking Docker mount)');
+      }
+    }
+    
+    if (fs.existsSync(backendServiceAccountPath)) {
+      const stats = fs.statSync(backendServiceAccountPath);
+      if (stats.isDirectory()) {
+        fs.rmdirSync(backendServiceAccountPath, { recursive: true });
+        console.log('   🗑️  Removed backend directory (was blocking Docker mount)');
+      }
+    }
   }
 
   // Write .env file

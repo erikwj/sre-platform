@@ -226,7 +226,7 @@ The platform now includes an **AI-powered knowledge graph** that provides intell
 ### Quick Setup
 
 1. **Enable GCP APIs** and create service account (see [Quick Start Guide](docs/KNOWLEDGE_GRAPH_QUICK_START.md))
-2. **Place service account key** in project root as `google-service-account-key.json`
+2. **Run setup** - `npm run first-run` will create the file and prompt you to paste your JSON
 3. **Start the application** - Knowledge graph features activate automatically!
 
 ### Documentation
