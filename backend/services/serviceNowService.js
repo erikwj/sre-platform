@@ -337,6 +337,112 @@ class ServiceNowService {
       throw error;
     }
   }
+
+  /**
+   * Get members of a group by group name
+   */
+  async getGroupMembers(groupName) {
+    if (!this.enabled) {
+      throw new Error('ServiceNow integration is not enabled');
+    }
+
+    try {
+      // First, find the group by name
+      const groupResponse = await this.client.get('/table/sys_user_group', {
+        params: {
+          sysparm_query: `name=${groupName}`,
+          sysparm_limit: 1,
+          sysparm_fields: 'sys_id,name,description',
+        },
+      });
+
+      if (!groupResponse.data.result || groupResponse.data.result.length === 0) {
+        return [];
+      }
+
+      const group = groupResponse.data.result[0];
+
+      // Get group members
+      const membersResponse = await this.client.get('/table/sys_user_grmember', {
+        params: {
+          sysparm_query: `group=${group.sys_id}`,
+          sysparm_fields: 'user.sys_id,user.name,user.email,user.title',
+          sysparm_display_value: 'true',
+        },
+      });
+
+      return membersResponse.data.result.map(member => ({
+        sys_id: member['user.sys_id'],
+        name: member['user.name'],
+        email: member['user.email'],
+        title: member['user.title'],
+      }));
+    } catch (error) {
+      console.error('Error fetching ServiceNow group members:', error.response?.data || error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Get assignment groups
+   */
+  async getAssignmentGroups(limit = 50) {
+    if (!this.enabled) {
+      throw new Error('ServiceNow integration is not enabled');
+    }
+
+    try {
+      const response = await this.client.get('/table/sys_user_group', {
+        params: {
+          sysparm_query: 'active=true',
+          sysparm_limit: limit,
+          sysparm_fields: 'sys_id,name,description,manager',
+          sysparm_display_value: 'true',
+        },
+      });
+
+      return response.data.result.map(group => ({
+        sys_id: group.sys_id,
+        name: group.name,
+        description: group.description,
+        manager: group.manager,
+      }));
+    } catch (error) {
+      console.error('Error fetching ServiceNow assignment groups:', error.response?.data || error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Search for users
+   */
+  async searchUsers(query, limit = 10) {
+    if (!this.enabled) {
+      throw new Error('ServiceNow integration is not enabled');
+    }
+
+    try {
+      const response = await this.client.get('/table/sys_user', {
+        params: {
+          sysparm_query: `active=true^nameLIKE${query}^ORemailLIKE${query}`,
+          sysparm_limit: limit,
+          sysparm_fields: 'sys_id,name,email,title,department',
+          sysparm_display_value: 'true',
+        },
+      });
+
+      return response.data.result.map(user => ({
+        sys_id: user.sys_id,
+        name: user.name,
+        email: user.email,
+        title: user.title,
+        department: user.department,
+      }));
+    } catch (error) {
+      console.error('Error searching ServiceNow users:', error.response?.data || error.message);
+      throw error;
+    }
+  }
 }
 
 module.exports = new ServiceNowService();

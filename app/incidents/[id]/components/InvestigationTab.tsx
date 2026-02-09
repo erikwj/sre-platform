@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Send, Circle, AlertCircle, Info, RefreshCw, Pause, Search } from 'lucide-react';
 import { formatTimestamp, formatDate } from '@/lib/utils';
 import { KnowledgeGraphRecommendations } from './KnowledgeGraphRecommendations';
+import { RACIMatrix } from './RACIMatrix';
 
 type TimelineEvent = {
   id: string;
@@ -69,21 +70,42 @@ const eventTypeConfig = {
   },
 };
 
+type User = {
+  sys_id: string;
+  name: string;
+  email: string;
+  title?: string;
+};
+
+type Group = {
+  sys_id: string;
+  name: string;
+  description?: string;
+};
+
 export function InvestigationTab({ incident, onRefresh }: InvestigationTabProps) {
   const [newUpdate, setNewUpdate] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showCommandMenu, setShowCommandMenu] = useState(false);
-  const [commandType, setCommandType] = useState<'main' | 'services'>('main');
+  const [commandType, setCommandType] = useState<'main' | 'services' | 'users' | 'groups'>('main');
   const [commandPosition, setCommandPosition] = useState({ top: 0, left: 0 });
   const [runbooks, setRunbooks] = useState<Runbook[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
+  const [groups, setGroups] = useState<Group[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [loadingRunbooks, setLoadingRunbooks] = useState(false);
+  const [loadingUsers, setLoadingUsers] = useState(false);
+  const [loadingGroups, setLoadingGroups] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Fetch runbooks when showing services menu
+  // Fetch data when showing menus
   useEffect(() => {
     if (commandType === 'services') {
       fetchRunbooks();
+    } else if (commandType === 'users' && searchQuery) {
+      fetchUsers();
+    } else if (commandType === 'groups') {
+      fetchGroups();
     }
   }, [commandType, searchQuery]);
 
@@ -102,6 +124,42 @@ export function InvestigationTab({ incident, onRefresh }: InvestigationTabProps)
       console.error('Error fetching runbooks:', error);
     } finally {
       setLoadingRunbooks(false);
+    }
+  };
+
+  const fetchUsers = async () => {
+    if (!searchQuery || searchQuery.length < 2) return;
+    
+    setLoadingUsers(true);
+    try {
+      const response = await fetch(
+        `http://localhost:3001/api/servicenow/users/search?q=${encodeURIComponent(searchQuery)}&limit=10`
+      );
+      if (response.ok) {
+        const data = await response.json();
+        setUsers(data);
+      }
+    } catch (error) {
+      console.error('Error fetching users:', error);
+    } finally {
+      setLoadingUsers(false);
+    }
+  };
+
+  const fetchGroups = async () => {
+    setLoadingGroups(true);
+    try {
+      const response = await fetch(
+        'http://localhost:3001/api/servicenow/assignment-groups?limit=20'
+      );
+      if (response.ok) {
+        const data = await response.json();
+        setGroups(data);
+      }
+    } catch (error) {
+      console.error('Error fetching groups:', error);
+    } finally {
+      setLoadingGroups(false);
     }
   };
 
@@ -141,15 +199,9 @@ export function InvestigationTab({ incident, onRefresh }: InvestigationTabProps)
     }
   };
 
-  const selectCommandType = (type: 'services' | 'people' | 'teams') => {
-    if (type === 'services') {
-      setCommandType('services');
-      setSearchQuery('');
-    } else {
-      // For demo, just insert placeholder
-      insertText(`/${type} `);
-      setShowCommandMenu(false);
-    }
+  const selectCommandType = (type: 'services' | 'users' | 'groups') => {
+    setCommandType(type);
+    setSearchQuery('');
   };
 
   const insertService = (runbook: Runbook) => {
@@ -161,6 +213,40 @@ export function InvestigationTab({ incident, onRefresh }: InvestigationTabProps)
     const newText =
       textBeforeCursor.substring(0, lastSlash) +
       `[${runbook.serviceName}](/runbooks/${runbook.id}) ` +
+      textAfterCursor;
+
+    setNewUpdate(newText);
+    setShowCommandMenu(false);
+    setCommandType('main');
+    textareaRef.current?.focus();
+  };
+
+  const insertUser = (user: User) => {
+    const cursorPosition = textareaRef.current?.selectionStart || 0;
+    const textBeforeCursor = newUpdate.substring(0, cursorPosition);
+    const textAfterCursor = newUpdate.substring(cursorPosition);
+    const lastSlash = textBeforeCursor.lastIndexOf('/');
+
+    const newText =
+      textBeforeCursor.substring(0, lastSlash) +
+      `@${user.name} (${user.email}) ` +
+      textAfterCursor;
+
+    setNewUpdate(newText);
+    setShowCommandMenu(false);
+    setCommandType('main');
+    textareaRef.current?.focus();
+  };
+
+  const insertGroup = (group: Group) => {
+    const cursorPosition = textareaRef.current?.selectionStart || 0;
+    const textBeforeCursor = newUpdate.substring(0, cursorPosition);
+    const textAfterCursor = newUpdate.substring(cursorPosition);
+    const lastSlash = textBeforeCursor.lastIndexOf('/');
+
+    const newText =
+      textBeforeCursor.substring(0, lastSlash) +
+      `@group:${group.name} ` +
       textAfterCursor;
 
     setNewUpdate(newText);
@@ -217,6 +303,9 @@ export function InvestigationTab({ incident, onRefresh }: InvestigationTabProps)
         incidentStatus={incident.status}
       />
 
+      {/* RACI Matrix */}
+      <RACIMatrix incidentId={incident.id} />
+
       {/* Add Update Form */}
       <div className="bg-white border border-border rounded-lg p-6">
         <h3 className="text-sm font-semibold text-text-primary mb-3">
@@ -263,25 +352,25 @@ export function InvestigationTab({ incident, onRefresh }: InvestigationTabProps)
                     </div>
                   </button>
                   <button
-                    onClick={() => selectCommandType('people')}
+                    onClick={() => selectCommandType('users')}
                     className="w-full px-3 py-2 text-left text-sm hover:bg-background transition-colors"
                   >
-                    <div className="font-medium text-text-primary">People</div>
+                    <div className="font-medium text-text-primary">Users</div>
                     <div className="text-xs text-text-secondary">
-                      Mention a team member
+                      Mention a user from ServiceNow
                     </div>
                   </button>
                   <button
-                    onClick={() => selectCommandType('teams')}
+                    onClick={() => selectCommandType('groups')}
                     className="w-full px-3 py-2 text-left text-sm hover:bg-background transition-colors"
                   >
-                    <div className="font-medium text-text-primary">Teams</div>
+                    <div className="font-medium text-text-primary">Groups</div>
                     <div className="text-xs text-text-secondary">
-                      Reference a team
+                      Reference an assignment group
                     </div>
                   </button>
                 </>
-              ) : (
+              ) : commandType === 'services' ? (
                 <>
                   <div className="px-3 py-2 border-b border-border">
                     <div className="relative">
@@ -334,7 +423,111 @@ export function InvestigationTab({ incident, onRefresh }: InvestigationTabProps)
                     </button>
                   </div>
                 </>
-              )}
+              ) : commandType === 'users' ? (
+                <>
+                  <div className="px-3 py-2 border-b border-border">
+                    <div className="relative">
+                      <Search className="absolute left-2 top-2 w-4 h-4 text-text-secondary" />
+                      <input
+                        type="text"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        placeholder="Search users... (min 2 chars)"
+                        className="w-full pl-8 pr-3 py-1.5 text-sm border border-border rounded focus:outline-none focus:ring-2 focus:ring-status-info"
+                        autoFocus
+                      />
+                    </div>
+                  </div>
+                  <div className="max-h-64 overflow-y-auto">
+                    {loadingUsers ? (
+                      <div className="px-3 py-4 text-center text-sm text-text-secondary">
+                        Loading users...
+                      </div>
+                    ) : searchQuery.length < 2 ? (
+                      <div className="px-3 py-4 text-center text-sm text-text-secondary">
+                        Type at least 2 characters to search
+                      </div>
+                    ) : users.length === 0 ? (
+                      <div className="px-3 py-4 text-center text-sm text-text-secondary">
+                        No users found
+                      </div>
+                    ) : (
+                      users.map((user) => (
+                        <button
+                          key={user.sys_id}
+                          onClick={() => insertUser(user)}
+                          className="w-full px-3 py-2 text-left hover:bg-background transition-colors"
+                        >
+                          <div className="font-medium text-sm text-text-primary">
+                            {user.name}
+                          </div>
+                          <div className="text-xs text-text-secondary">
+                            {user.email} {user.title && `• ${user.title}`}
+                          </div>
+                        </button>
+                      ))
+                    )}
+                  </div>
+                  <div className="px-3 py-2 border-t border-border">
+                    <button
+                      onClick={() => {
+                        setCommandType('main');
+                        setSearchQuery('');
+                      }}
+                      className="text-xs text-status-info hover:text-blue-600"
+                    >
+                      ← Back
+                    </button>
+                  </div>
+                </>
+              ) : commandType === 'groups' ? (
+                <>
+                  <div className="px-3 py-2 border-b border-border">
+                    <div className="text-xs font-semibold text-text-secondary">
+                      Assignment Groups
+                    </div>
+                  </div>
+                  <div className="max-h-64 overflow-y-auto">
+                    {loadingGroups ? (
+                      <div className="px-3 py-4 text-center text-sm text-text-secondary">
+                        Loading groups...
+                      </div>
+                    ) : groups.length === 0 ? (
+                      <div className="px-3 py-4 text-center text-sm text-text-secondary">
+                        No groups found
+                      </div>
+                    ) : (
+                      groups.map((group) => (
+                        <button
+                          key={group.sys_id}
+                          onClick={() => insertGroup(group)}
+                          className="w-full px-3 py-2 text-left hover:bg-background transition-colors"
+                        >
+                          <div className="font-medium text-sm text-text-primary">
+                            {group.name}
+                          </div>
+                          {group.description && (
+                            <div className="text-xs text-text-secondary">
+                              {group.description.substring(0, 60)}...
+                            </div>
+                          )}
+                        </button>
+                      ))
+                    )}
+                  </div>
+                  <div className="px-3 py-2 border-t border-border">
+                    <button
+                      onClick={() => {
+                        setCommandType('main');
+                        setSearchQuery('');
+                      }}
+                      className="text-xs text-status-info hover:text-blue-600"
+                    >
+                      ← Back
+                    </button>
+                  </div>
+                </>
+              ) : null}
             </div>
           )}
 

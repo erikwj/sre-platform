@@ -318,4 +318,64 @@ router.post('/import', async (req, res) => {
   }
 });
 
+// GET /api/servicenow/groups/:groupName/members - Get members of a specific group
+router.get('/groups/:groupName/members', async (req, res) => {
+  try {
+    if (!serviceNowService.isEnabled()) {
+      return res.status(400).json({ error: 'ServiceNow integration is not enabled' });
+    }
+
+    const members = await serviceNowService.getGroupMembers(req.params.groupName);
+    res.json(members);
+  } catch (error) {
+    console.error('Error fetching ServiceNow group members:', error);
+    res.status(500).json({
+      error: 'Failed to fetch group members from ServiceNow',
+      details: error.message
+    });
+  }
+});
+
+// GET /api/servicenow/assignment-groups - Get assignment groups
+router.get('/assignment-groups', async (req, res) => {
+  try {
+    if (!serviceNowService.isEnabled()) {
+      return res.status(400).json({ error: 'ServiceNow integration is not enabled' });
+    }
+
+    const { limit } = req.query;
+    const groups = await serviceNowService.getAssignmentGroups(parseInt(limit) || 50);
+    res.json(groups);
+  } catch (error) {
+    console.error('Error fetching ServiceNow assignment groups:', error);
+    res.status(500).json({
+      error: 'Failed to fetch assignment groups from ServiceNow',
+      details: error.message
+    });
+  }
+});
+
+// GET /api/servicenow/users/search - Search for users
+router.get('/users/search', async (req, res) => {
+  try {
+    if (!serviceNowService.isEnabled()) {
+      return res.status(400).json({ error: 'ServiceNow integration is not enabled' });
+    }
+
+    const { q, limit } = req.query;
+    if (!q) {
+      return res.status(400).json({ error: 'Query parameter "q" is required' });
+    }
+
+    const users = await serviceNowService.searchUsers(q, parseInt(limit) || 10);
+    res.json(users);
+  } catch (error) {
+    console.error('Error searching ServiceNow users:', error);
+    res.status(500).json({
+      error: 'Failed to search users in ServiceNow',
+      details: error.message
+    });
+  }
+});
+
 module.exports = router;

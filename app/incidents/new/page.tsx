@@ -116,25 +116,25 @@ export default function NewIncidentPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background dark:bg-gray-900">
       {/* Navigation */}
-      <nav className="border-b border-border bg-white">
+      <nav className="border-b border-border dark:border-gray-700 bg-white dark:bg-gray-800">
         <div className="max-w-content mx-auto px-8 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-8">
-              <Link href="/" className="text-xl font-bold text-text-primary">
+              <Link href="/" className="text-xl font-bold text-text-primary dark:text-white">
                 SRE Platform
               </Link>
               <div className="flex space-x-6">
                 <Link
                   href="/incidents"
-                  className="text-sm text-text-secondary hover:text-text-primary transition-colors"
+                  className="text-sm text-text-secondary dark:text-gray-300 hover:text-text-primary dark:hover:text-white transition-colors"
                 >
                   Incidents
                 </Link>
                 <Link
                   href="/runbooks"
-                  className="text-sm text-text-secondary hover:text-text-primary transition-colors"
+                  className="text-sm text-text-secondary dark:text-gray-300 hover:text-text-primary dark:hover:text-white transition-colors"
                 >
                   Runbooks
                 </Link>
@@ -146,18 +146,18 @@ export default function NewIncidentPage() {
 
       {/* Main Content */}
       <main className="max-w-3xl mx-auto px-8 py-12">
-        <div className="bg-white border border-border rounded-lg shadow-sm">
+        <div className="bg-white dark:bg-gray-800 border border-border dark:border-gray-700 rounded-lg shadow-sm">
           {/* Header */}
-          <div className="border-b border-border px-8 py-6">
+          <div className="border-b border-border dark:border-gray-700 px-8 py-6">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-status-critical/10 rounded-lg flex items-center justify-center">
                 <AlertCircle className="w-6 h-6 text-status-critical" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-text-primary">
+                <h1 className="text-2xl font-bold text-text-primary dark:text-white">
                   Declare Major Incident
                 </h1>
-                <p className="text-sm text-text-secondary mt-1">
+                <p className="text-sm text-text-secondary dark:text-gray-400 mt-1">
                   Create a new incident to track and manage the response
                 </p>
               </div>
@@ -186,12 +186,12 @@ export default function NewIncidentPage() {
             )}
 
             {/* Import from ServiceNow Toggle */}
-            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-border">
+            <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg border border-border dark:border-gray-600">
               <div className="flex-1">
-                <label htmlFor="importToggle" className="text-sm font-medium text-text-primary">
+                <label htmlFor="importToggle" className="text-sm font-medium text-text-primary dark:text-white">
                   Import details from ServiceNow?
                 </label>
-                <p className="text-xs text-text-secondary mt-1">
+                <p className="text-xs text-text-secondary dark:text-gray-400 mt-1">
                   Automatically fill title and description from ServiceNow incident
                 </p>
               </div>
@@ -199,7 +199,7 @@ export default function NewIncidentPage() {
                 type="button"
                 onClick={() => setImportFromSnow(!importFromSnow)}
                 className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-status-info focus:ring-offset-2 ${
-                  importFromSnow ? 'bg-status-info' : 'bg-gray-300'
+                  importFromSnow ? 'bg-status-info' : 'bg-gray-300 dark:bg-gray-600'
                 }`}
                 id="importToggle"
               >
@@ -215,7 +215,7 @@ export default function NewIncidentPage() {
             <div>
               <label
                 htmlFor="incidentNumber"
-                className="block text-sm font-medium text-text-primary mb-2"
+                className="block text-sm font-medium text-text-primary dark:text-white mb-2"
               >
                 Incident Number <span className="text-status-critical">*</span>
               </label>
@@ -225,7 +225,7 @@ export default function NewIncidentPage() {
                   type="text"
                   id="incidentNumber"
                   placeholder="INC-XXXXXX (from ServiceNow)"
-                  className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-status-info focus:border-transparent"
+                  className="w-full px-4 py-2 border border-border dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-status-info focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
                 />
                 {isLoadingSnowData && (
                   <div className="absolute right-3 top-1/2 -translate-y-1/2">
@@ -239,7 +239,7 @@ export default function NewIncidentPage() {
                 </p>
               )}
               {importFromSnow && (
-                <p className="mt-1 text-xs text-text-secondary">
+                <p className="mt-1 text-xs text-text-secondary dark:text-gray-400">
                   Enter ServiceNow incident number to auto-fill details
                 </p>
               )}
@@ -249,7 +249,7 @@ export default function NewIncidentPage() {
             <div>
               <label
                 htmlFor="title"
-                className="block text-sm font-medium text-text-primary mb-2"
+                className="block text-sm font-medium text-text-primary dark:text-white mb-2"
               >
                 Title <span className="text-status-critical">*</span>
               </label>
@@ -259,7 +259,7 @@ export default function NewIncidentPage() {
                 id="title"
                 placeholder="Brief description of the incident"
                 disabled={importFromSnow && isLoadingSnowData}
-                className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-status-info focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
+                className="w-full px-4 py-2 border border-border dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-status-info focus:border-transparent disabled:bg-gray-100 dark:disabled:bg-gray-700 disabled:cursor-not-allowed bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
               />
               {errors.title && (
                 <p className="mt-1 text-sm text-status-critical">
@@ -272,7 +272,7 @@ export default function NewIncidentPage() {
             <div>
               <label
                 htmlFor="description"
-                className="block text-sm font-medium text-text-primary mb-2"
+                className="block text-sm font-medium text-text-primary dark:text-white mb-2"
               >
                 Short Description <span className="text-status-critical">*</span>
               </label>
@@ -282,7 +282,7 @@ export default function NewIncidentPage() {
                 rows={4}
                 placeholder="What is happening? What services are affected?"
                 disabled={importFromSnow && isLoadingSnowData}
-                className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-status-info focus:border-transparent resize-none disabled:bg-gray-100 disabled:cursor-not-allowed"
+                className="w-full px-4 py-2 border border-border dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-status-info focus:border-transparent resize-none disabled:bg-gray-100 dark:disabled:bg-gray-700 disabled:cursor-not-allowed bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
               />
               {errors.description && (
                 <p className="mt-1 text-sm text-status-critical">
@@ -295,14 +295,14 @@ export default function NewIncidentPage() {
             <div>
               <label
                 htmlFor="severity"
-                className="block text-sm font-medium text-text-primary mb-2"
+                className="block text-sm font-medium text-text-primary dark:text-white mb-2"
               >
                 Severity <span className="text-status-critical">*</span>
               </label>
               <select
                 {...register('severity')}
                 id="severity"
-                className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-status-info focus:border-transparent"
+                className="w-full px-4 py-2 border border-border dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-status-info focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
               >
                 <option value="major">Major</option>
                 <option value="preemptive_major">Preemptive Major</option>
@@ -318,7 +318,7 @@ export default function NewIncidentPage() {
             <div>
               <label
                 htmlFor="incidentLead"
-                className="block text-sm font-medium text-text-primary mb-2"
+                className="block text-sm font-medium text-text-primary dark:text-white mb-2"
               >
                 Incident Lead <span className="text-status-critical">*</span>
               </label>
@@ -327,23 +327,23 @@ export default function NewIncidentPage() {
                 type="text"
                 id="incidentLead"
                 placeholder="Manager on Duty"
-                className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-status-info focus:border-transparent"
+                className="w-full px-4 py-2 border border-border dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-status-info focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
               />
               {errors.incidentLead && (
                 <p className="mt-1 text-sm text-status-critical">
                   {errors.incidentLead.message}
                 </p>
               )}
-              <p className="mt-1 text-xs text-text-secondary">
+              <p className="mt-1 text-xs text-text-secondary dark:text-gray-400">
                 Auto-populated with current Manager on Duty
               </p>
             </div>
 
             {/* Actions */}
-            <div className="flex items-center justify-end gap-3 pt-4 border-t border-border">
+            <div className="flex items-center justify-end gap-3 pt-4 border-t border-border dark:border-gray-700">
               <Link
                 href="/"
-                className="px-4 py-2 text-sm font-medium text-text-secondary hover:text-text-primary transition-colors"
+                className="px-4 py-2 text-sm font-medium text-text-secondary dark:text-gray-300 hover:text-text-primary dark:hover:text-white transition-colors"
               >
                 Cancel
               </Link>
