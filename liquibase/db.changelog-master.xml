@@ -6,10 +6,10 @@
     http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.25.xsd">
 
     <!-- Include all changesets -->
-    <include file="changelog/changesets/001-initial-schema.xml"/>
-    <include file="changelog/changesets/003-postmortem-swiss-cheese-schema.xml"/>
-    <include file="changelog/changesets/004-knowledge-graph-schema.xml"/>
-    <include file="changelog/changesets/005-add-postmortem-embeddings-unique-constraint.xml"/>
-    <include file="changelog/changesets/006-servicenow-integration.xml"/>
+    <include file="changesets/001-initial-schema.xml" relativeToChangelogFile="true"/>
+    <include file="changesets/003-postmortem-swiss-cheese-schema.xml" relativeToChangelogFile="true"/>
+    <include file="changesets/004-knowledge-graph-schema.xml" relativeToChangelogFile="true"/>
+    <include file="changesets/005-add-postmortem-embeddings-unique-constraint.xml" relativeToChangelogFile="true"/>
+    <include file="changesets/006-servicenow-integration.xml" relativeToChangelogFile="true"/>
 
 </databaseChangeLog>

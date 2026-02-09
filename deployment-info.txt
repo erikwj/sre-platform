@@ -1,0 +1,30 @@
+Deployment Information
+======================
+Deployed at: Thu Feb  5 19:56:11 EET 2026
+
+Service URLs:
+-------------
+Frontend:  https://sre-frontend-lw2m2devlq-uc.a.run.app
+Backend:   https://sre-backend-lw2m2devlq-uc.a.run.app
+WebSocket: https://sre-websocket-lw2m2devlq-uc.a.run.app
+
+Cloud Run Services:
+-------------------
+Frontend:  sre-frontend
+Backend:   sre-backend
+WebSocket: sre-websocket
+
+Database:
+---------
+Instance:  sre-platform-db
+Connection: ing-hackathon-486513:us-central1:sre-platform-db
+
+To view logs:
+-------------
+gcloud run services logs tail sre-frontend --region=us-central1 --project=ing-hackathon-486513
+gcloud run services logs tail sre-backend --region=us-central1 --project=ing-hackathon-486513
+gcloud run services logs tail sre-websocket --region=us-central1 --project=ing-hackathon-486513
+
+To update services:
+-------------------
+./04-build-and-deploy.sh

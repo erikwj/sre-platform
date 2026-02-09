@@ -54,7 +54,7 @@ export default function EditRunbookPage() {
 
   const fetchRunbook = async (id: string) => {
     try {
-      const response = await fetch(`http://localhost:3001/api/runbooks/${id}`);
+      const response = await fetch(`/api/runbooks/${id}`);
       if (response.ok) {
         const data: Runbook = await response.json();
         setFormData({
@@ -82,7 +82,7 @@ export default function EditRunbookPage() {
     setError('');
 
     try {
-      const response = await fetch(`http://localhost:3001/api/runbooks/${params.id}`, {
+      const response = await fetch(`/api/runbooks/${params.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

@@ -1,0 +1,45 @@
+# Cloud Build Configuration for Frontend with Build Args
+steps:
+  # Build Frontend with API URLs as build arguments
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'build-frontend'
+    args:
+      - 'build'
+      - '-t'
+      - '${_IMAGE_NAME}'
+      - '--build-arg'
+      - 'API_URL=${_API_URL}'
+      - '--build-arg'
+      - 'NEXT_PUBLIC_API_URL=${_NEXT_PUBLIC_API_URL}'
+      - '--build-arg'
+      - 'NEXT_PUBLIC_WEBSOCKET_URL=${_NEXT_PUBLIC_WEBSOCKET_URL}'
+      - '-f'
+      - 'Dockerfile'
+      - '.'
+  
+  # Push Frontend Image
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'push-frontend'
+    args:
+      - 'push'
+      - '${_IMAGE_NAME}'
+    waitFor: ['build-frontend']
+
+# Images to push to Artifact Registry
+images:
+  - '${_IMAGE_NAME}'
+
+# Substitution variables (will be provided by gcloud builds submit)
+substitutions:
+  _IMAGE_NAME: 'us-central1-docker.pkg.dev/PROJECT_ID/sre-platform/frontend:latest'
+  _API_URL: 'http://localhost:3001'
+  _NEXT_PUBLIC_API_URL: 'http://localhost:3001'
+  _NEXT_PUBLIC_WEBSOCKET_URL: 'http://localhost:4000'
+
+# Build options
+options:
+  machineType: 'E2_HIGHCPU_8'
+  logging: CLOUD_LOGGING_ONLY
+
+# Timeout for build
+timeout: '1800s'  # 30 minutes

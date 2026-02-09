@@ -2,12 +2,10 @@
 
 # dependencies
 /node_modules
-/backend/node_modules
-/websocket/node_modules
-node_modules/
 /.pnp
 .pnp.js
-.yarn/install-state.gz
+/backend/node_modules
+/websocket/node_modules
 
 # testing
 /coverage
@@ -29,32 +27,16 @@ yarn-debug.log*
 yarn-error.log*
 
 # local env files
-.env*.local
 .env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
 
-# vercel
-.vercel
+# GCP deployment generated files (contain sensitive info)
+gcp-deploy/db-connection-info.txt
+gcp-deploy/deployment-info.txt
+gcp-deploy/domain-config.txt
 
-# typescript
-*.tsbuildinfo
-next-env.d.ts
-
-# prisma
-prisma/migrations/
-
-# docker
-docker-data/
-.idea/.gitignore
-.idea/copilot.data.migration.agent.xml
-.idea/copilot.data.migration.ask.xml
-.idea/copilot.data.migration.ask2agent.xml
-.idea/copilot.data.migration.edit.xml
-.idea/misc.xml
-.idea/modules.xml
-.idea/sre-platform.iml
-.idea/vcs.xml
-
-# Google Cloud service account keys
+# Google Cloud credentials
 google-service-account-key.json
-*-service-account-key.json
-copilot.exe

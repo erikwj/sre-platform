@@ -1,0 +1,29 @@
+# Cloud Build Configuration for Backend
+# Builds backend from project root to include google-service-account-key.json
+
+steps:
+  # Build Backend
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - '${_IMAGE_NAME}'
+      - '-f'
+      - 'backend/Dockerfile'
+      - '.'
+
+# Images to push
+images:
+  - '${_IMAGE_NAME}'
+
+# Substitution variables
+substitutions:
+  _IMAGE_NAME: 'us-central1-docker.pkg.dev/PROJECT_ID/sre-platform/backend:latest'
+
+# Build options
+options:
+  machineType: 'E2_HIGHCPU_8'
+  logging: CLOUD_LOGGING_ONLY
+
+# Timeout
+timeout: '600s'

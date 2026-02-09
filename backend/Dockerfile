@@ -12,7 +12,7 @@ RUN npm install
 COPY . .
 
 # Note: google-service-account-key.json will be mounted as a volume in docker-compose
-# This allows you to update the key without rebuilding the image
+# In GCP, it will be provided via GOOGLE_SERVICE_ACCOUNT_KEY environment variable from Secret Manager
 
 # Expose port
 EXPOSE 3001

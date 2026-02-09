@@ -55,8 +55,8 @@ export function KnowledgeGraphRecommendations({
       setError(null);
 
       const url = forceRefresh
-        ? `http://localhost:3001/api/incidents/${incidentId}/recommendations/refresh`
-        : `http://localhost:3001/api/incidents/${incidentId}/recommendations`;
+        ? `/api/incidents/${incidentId}/recommendations/refresh`
+        : `/api/incidents/${incidentId}/recommendations`;
 
       const response = await fetch(url, {
         method: forceRefresh ? 'POST' : 'GET',

@@ -91,8 +91,8 @@ export function InvestigationTab({ incident, onRefresh }: InvestigationTabProps)
     setLoadingRunbooks(true);
     try {
       const url = searchQuery
-        ? `http://localhost:3001/api/runbooks?search=${encodeURIComponent(searchQuery)}`
-        : 'http://localhost:3001/api/runbooks';
+        ? `/api/runbooks?search=${encodeURIComponent(searchQuery)}`
+        : '/api/runbooks';
       const response = await fetch(url);
       if (response.ok) {
         const data = await response.json();
