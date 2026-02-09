@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { AlertCircle, ChevronRight, Clock, Users, Link2, Tag, Trash2 } from 'lucide-react';
 import { StatusBadge } from '@/app/components/StatusBadge';
 import { ConfirmationModal } from '@/app/components/ConfirmationModal';
+import { ThemeToggle } from '@/app/components/ThemeToggle';
 import { formatDuration, formatRelativeTime } from '@/lib/utils';
 import { OverviewTab } from './components/OverviewTab';
 import { InvestigationTab } from './components/InvestigationTab';
@@ -145,16 +146,16 @@ export default function IncidentDetailPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background">
-        <nav className="border-b border-border bg-white">
+      <div className="min-h-screen bg-background dark:bg-gray-900">
+        <nav className="border-b border-border dark:border-gray-700 bg-white dark:bg-gray-800">
           <div className="max-w-content mx-auto px-8 py-4">
-            <Link href="/" className="text-xl font-bold text-text-primary">
+            <Link href="/" className="text-xl font-bold text-text-primary dark:text-white">
               SRE Platform
             </Link>
           </div>
         </nav>
         <div className="max-w-content mx-auto px-8 py-12">
-          <div className="text-center text-text-secondary">Loading incident...</div>
+          <div className="text-center text-text-secondary dark:text-gray-400">Loading incident...</div>
         </div>
       </div>
     );
@@ -162,10 +163,10 @@ export default function IncidentDetailPage() {
 
   if (error || !incident) {
     return (
-      <div className="min-h-screen bg-background">
-        <nav className="border-b border-border bg-white">
+      <div className="min-h-screen bg-background dark:bg-gray-900">
+        <nav className="border-b border-border dark:border-gray-700 bg-white dark:bg-gray-800">
           <div className="max-w-content mx-auto px-8 py-4">
-            <Link href="/" className="text-xl font-bold text-text-primary">
+            <Link href="/" className="text-xl font-bold text-text-primary dark:text-white">
               SRE Platform
             </Link>
           </div>
@@ -173,10 +174,10 @@ export default function IncidentDetailPage() {
         <div className="max-w-content mx-auto px-8 py-12">
           <div className="text-center">
             <AlertCircle className="w-12 h-12 text-status-critical mx-auto mb-4" />
-            <h2 className="text-xl font-semibold text-text-primary mb-2">
+            <h2 className="text-xl font-semibold text-text-primary dark:text-white mb-2">
               Incident Not Found
             </h2>
-            <p className="text-text-secondary mb-6">{error || 'The incident could not be loaded.'}</p>
+            <p className="text-text-secondary dark:text-gray-400 mb-6">{error || 'The incident could not be loaded.'}</p>
             <Link
               href="/incidents"
               className="inline-block px-4 py-2 bg-status-info text-white rounded-lg hover:bg-blue-600 transition-colors"
@@ -190,59 +191,75 @@ export default function IncidentDetailPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background dark:bg-gray-900">
       {/* Navigation */}
-      <nav className="border-b border-border bg-white">
+      <nav className="sticky top-0 z-50 border-b border-border dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm">
         <div className="max-w-content mx-auto px-8 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-8">
-              <Link href="/" className="text-xl font-bold text-text-primary">
+              <Link href="/" className="text-xl font-bold text-text-primary dark:text-white">
                 SRE Platform
               </Link>
               <div className="flex space-x-6">
                 <Link
                   href="/incidents"
-                  className="text-sm text-text-secondary hover:text-text-primary transition-colors"
+                  className="text-sm text-text-secondary dark:text-gray-300 hover:text-text-primary dark:hover:text-white transition-colors"
                 >
                   Incidents
                 </Link>
                 <Link
+                  href="/postmortems"
+                  className="text-sm text-text-secondary dark:text-gray-300 hover:text-text-primary dark:hover:text-white transition-colors"
+                >
+                  Postmortems
+                </Link>
+                <Link
                   href="/runbooks"
-                  className="text-sm text-text-secondary hover:text-text-primary transition-colors"
+                  className="text-sm text-text-secondary dark:text-gray-300 hover:text-text-primary dark:hover:text-white transition-colors"
                 >
                   Runbooks
                 </Link>
               </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <ThemeToggle />
+              <Link
+                href="/incidents/new"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-status-critical text-white font-semibold rounded-lg hover:bg-red-600 transition-colors shadow-sm"
+              >
+                <AlertCircle className="w-4 h-4" />
+                Declare Major Incident
+              </Link>
             </div>
           </div>
         </div>
       </nav>
 
       {/* Breadcrumb */}
-      <div className="bg-white border-b border-border">
+      <div className="bg-white dark:bg-gray-800 border-b border-border dark:border-gray-700">
         <div className="max-w-content mx-auto px-8 py-3">
-          <div className="flex items-center text-sm text-text-secondary">
-            <Link href="/incidents" className="hover:text-text-primary">
+          <div className="flex items-center text-sm text-text-secondary dark:text-gray-400">
+            <Link href="/incidents" className="hover:text-text-primary dark:hover:text-white">
               Incidents
             </Link>
             <ChevronRight className="w-4 h-4 mx-2" />
-            <span className="text-text-primary font-medium">{incident.incidentNumber}</span>
+            <span className="text-text-primary dark:text-white font-medium">{incident.incidentNumber}</span>
           </div>
         </div>
       </div>
 
       {/* Header */}
-      <div className="bg-white border-b border-border">
+      <div className="bg-white dark:bg-gray-800 border-b border-border dark:border-gray-700">
         <div className="max-w-content mx-auto px-8 py-6">
           <div className="flex items-start justify-between mb-4">
             <div className="flex-1">
               <div className="flex items-center gap-3 mb-2">
-                <span className="text-sm font-mono text-text-secondary">
+                <span className="text-sm font-mono text-text-secondary dark:text-gray-400">
                   {incident.incidentNumber}
                 </span>
                 <StatusBadge status={incident.status} />
               </div>
-              <h1 className="text-3xl font-bold text-text-primary">{incident.title}</h1>
+              <h1 className="text-3xl font-bold text-text-primary dark:text-white">{incident.title}</h1>
             </div>
             <button
               onClick={() => setShowDeleteModal(true)}
@@ -260,7 +277,7 @@ export default function IncidentDetailPage() {
               className={`pb-3 px-1 text-sm font-medium border-b-2 transition-colors ${
                 activeTab === 'overview'
                   ? 'border-status-info text-status-info'
-                  : 'border-transparent text-text-secondary hover:text-text-primary'
+                  : 'border-transparent text-text-secondary dark:text-gray-400 hover:text-text-primary dark:hover:text-white'
               }`}
             >
               Overview
@@ -270,7 +287,7 @@ export default function IncidentDetailPage() {
               className={`pb-3 px-1 text-sm font-medium border-b-2 transition-colors ${
                 activeTab === 'investigation'
                   ? 'border-status-info text-status-info'
-                  : 'border-transparent text-text-secondary hover:text-text-primary'
+                  : 'border-transparent text-text-secondary dark:text-gray-400 hover:text-text-primary dark:hover:text-white'
               }`}
             >
               Investigation
@@ -280,7 +297,7 @@ export default function IncidentDetailPage() {
               className={`pb-3 px-1 text-sm font-medium border-b-2 transition-colors ${
                 activeTab === 'postmortem'
                   ? 'border-status-info text-status-info'
-                  : 'border-transparent text-text-secondary hover:text-text-primary'
+                  : 'border-transparent text-text-secondary dark:text-gray-400 hover:text-text-primary dark:hover:text-white'
               }`}
             >
               Post-mortem
@@ -308,12 +325,12 @@ export default function IncidentDetailPage() {
           {/* Right Sidebar - Metadata */}
           <div className="w-80 space-y-6">
             {/* Status */}
-            <div className="bg-white border border-border rounded-lg p-6">
-              <h3 className="text-sm font-semibold text-text-primary mb-3">Status</h3>
+            <div className="bg-white dark:bg-gray-800 border border-border dark:border-gray-700 rounded-lg p-6">
+              <h3 className="text-sm font-semibold text-text-primary dark:text-white mb-3">Status</h3>
               <select
                 value={incident.status}
                 onChange={(e) => updateIncident({ status: e.target.value })}
-                className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-status-info"
+                className="w-full px-3 py-2 border border-border dark:border-gray-600 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-status-info bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
               >
                 <option value="active">Active</option>
                 <option value="investigating">Investigating</option>
@@ -324,56 +341,56 @@ export default function IncidentDetailPage() {
             </div>
 
             {/* Severity */}
-            <div className="bg-white border border-border rounded-lg p-6">
-              <h3 className="text-sm font-semibold text-text-primary mb-3">Severity</h3>
+            <div className="bg-white dark:bg-gray-800 border border-border dark:border-gray-700 rounded-lg p-6">
+              <h3 className="text-sm font-semibold text-text-primary dark:text-white mb-3">Severity</h3>
               <div className="flex items-center gap-2">
                 <AlertCircle className="w-5 h-5 text-status-critical" />
-                <span className="text-sm font-medium text-text-primary capitalize">
+                <span className="text-sm font-medium text-text-primary dark:text-white capitalize">
                   {incident.severity.replace('_', ' ')}
                 </span>
               </div>
             </div>
 
             {/* Duration */}
-            <div className="bg-white border border-border rounded-lg p-6">
-              <h3 className="text-sm font-semibold text-text-primary mb-3">Duration</h3>
+            <div className="bg-white dark:bg-gray-800 border border-border dark:border-gray-700 rounded-lg p-6">
+              <h3 className="text-sm font-semibold text-text-primary dark:text-white mb-3">Duration</h3>
               <div className="flex items-center gap-2">
-                <Clock className="w-5 h-5 text-text-secondary" />
-                <span className="text-sm text-text-primary">
+                <Clock className="w-5 h-5 text-text-secondary dark:text-gray-400" />
+                <span className="text-sm text-text-primary dark:text-white">
                   {formatDuration(new Date(incident.detectedAt), incident.resolvedAt ? new Date(incident.resolvedAt) : undefined)}
                 </span>
               </div>
-              <p className="text-xs text-text-secondary mt-2">
+              <p className="text-xs text-text-secondary dark:text-gray-400 mt-2">
                 Started {formatRelativeTime(incident.detectedAt)}
               </p>
             </div>
 
             {/* Roles */}
-            <div className="bg-white border border-border rounded-lg p-6">
-              <h3 className="text-sm font-semibold text-text-primary mb-3">Roles</h3>
+            <div className="bg-white dark:bg-gray-800 border border-border dark:border-gray-700 rounded-lg p-6">
+              <h3 className="text-sm font-semibold text-text-primary dark:text-white mb-3">Roles</h3>
               <div className="space-y-3">
                 <div>
-                  <p className="text-xs text-text-secondary mb-1">Incident Lead</p>
+                  <p className="text-xs text-text-secondary dark:text-gray-400 mb-1">Incident Lead</p>
                   <div className="flex items-center gap-2">
                     <div className="w-6 h-6 bg-accent-purple/10 rounded-full flex items-center justify-center">
                       <span className="text-xs font-medium text-accent-purple">
                         {incident.incidentLead?.name.charAt(0) || 'U'}
                       </span>
                     </div>
-                    <span className="text-sm text-text-primary">
+                    <span className="text-sm text-text-primary dark:text-white">
                       {incident.incidentLead?.name || 'Unassigned'}
                     </span>
                   </div>
                 </div>
                 <div>
-                  <p className="text-xs text-text-secondary mb-1">Reporter</p>
+                  <p className="text-xs text-text-secondary dark:text-gray-400 mb-1">Reporter</p>
                   <div className="flex items-center gap-2">
                     <div className="w-6 h-6 bg-status-info/10 rounded-full flex items-center justify-center">
                       <span className="text-xs font-medium text-status-info">
                         {incident.reporter?.name.charAt(0) || 'U'}
                       </span>
                     </div>
-                    <span className="text-sm text-text-primary">
+                    <span className="text-sm text-text-primary dark:text-white">
                       {incident.reporter?.name || 'Unknown'}
                     </span>
                   </div>
@@ -382,11 +399,11 @@ export default function IncidentDetailPage() {
             </div>
 
             {/* Custom Fields */}
-            <div className="bg-white border border-border rounded-lg p-6">
-              <h3 className="text-sm font-semibold text-text-primary mb-3">Custom Fields</h3>
+            <div className="bg-white dark:bg-gray-800 border border-border dark:border-gray-700 rounded-lg p-6">
+              <h3 className="text-sm font-semibold text-text-primary dark:text-white mb-3">Custom Fields</h3>
               <div className="space-y-3 text-sm">
                 <div>
-                  <p className="text-xs text-text-secondary mb-1">Services Affected</p>
+                  <p className="text-xs text-text-secondary dark:text-gray-400 mb-1">Services Affected</p>
                   <div className="flex flex-wrap gap-1">
                     {incident.services.length > 0 ? (
                       incident.services.map((s: any) => (
@@ -398,17 +415,17 @@ export default function IncidentDetailPage() {
                         </span>
                       ))
                     ) : (
-                      <span className="text-text-secondary text-xs">None</span>
+                      <span className="text-text-secondary dark:text-gray-400 text-xs">None</span>
                     )}
                   </div>
                 </div>
                 <div>
-                  <p className="text-xs text-text-secondary mb-1">Customer Affected?</p>
-                  <p className="text-text-primary">Unknown</p>
+                  <p className="text-xs text-text-secondary dark:text-gray-400 mb-1">Customer Affected?</p>
+                  <p className="text-text-primary dark:text-white">Unknown</p>
                 </div>
                 <div>
-                  <p className="text-xs text-text-secondary mb-1">Escalated to Core Team?</p>
-                  <p className="text-text-primary">No</p>
+                  <p className="text-xs text-text-secondary dark:text-gray-400 mb-1">Escalated to Core Team?</p>
+                  <p className="text-text-primary dark:text-white">No</p>
                 </div>
               </div>
             </div>

@@ -668,4 +668,96 @@ router.post('/:id/sync-snow-activities', async (req, res) => {
   }
 });
 
+// POST /api/incidents/:id/summary - Generate AI summary of incident
+router.post('/:id/summary', async (req, res) => {
+  try {
+    const { getAIService } = require('../services/aiService');
+    const aiService = getAIService();
+
+    // Fetch incident details
+    const result = await pool.query(
+      `SELECT 
+        i.incident_number,
+        i.title,
+        i.severity,
+        i.status,
+        i.problem_statement,
+        i.impact,
+        i.causes,
+        i.steps_to_resolve,
+        i.created_at,
+        i.detected_at,
+        i.mitigated_at,
+        i.resolved_at
+      FROM incidents i
+      WHERE i.id = $1`,
+      [req.params.id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Incident not found' });
+    }
+
+    const incident = result.rows[0];
+
+    // Check if there's enough data to generate a summary
+    const hasData = incident.problem_statement || incident.impact || 
+                    incident.causes || incident.steps_to_resolve;
+
+    if (!hasData) {
+      return res.json({ 
+        summary: 'No incident details available yet. Please fill in the Problem Statement, Impact, Causes, or Steps to Resolve fields to generate an AI summary.',
+        hasData: false
+      });
+    }
+
+    // Generate AI summary
+    const systemPrompt = `You are an expert SRE (Site Reliability Engineer) analyzing incident reports. 
+Your task is to provide a clear, concise executive summary of the incident based on the available information.
+
+Focus on:
+- What happened (in simple terms)
+- The severity and urgency
+- Key impact points
+- Root causes identified
+- Resolution approach
+- Current status
+
+Keep the summary professional, actionable, and easy to understand for both technical and non-technical stakeholders.
+Use 2-3 paragraphs maximum.`;
+
+    const userMessage = `Analyze this incident and provide an executive summary:
+
+**Incident:** ${incident.incident_number} - ${incident.title}
+**Severity:** ${incident.severity}
+**Status:** ${incident.status}
+**Created:** ${new Date(incident.created_at).toLocaleString()}
+${incident.detected_at ? `**Detected:** ${new Date(incident.detected_at).toLocaleString()}` : ''}
+${incident.mitigated_at ? `**Mitigated:** ${new Date(incident.mitigated_at).toLocaleString()}` : ''}
+${incident.resolved_at ? `**Resolved:** ${new Date(incident.resolved_at).toLocaleString()}` : ''}
+
+${incident.problem_statement ? `**Problem Statement:**\n${incident.problem_statement}\n\n` : ''}
+${incident.impact ? `**Impact:**\n${incident.impact}\n\n` : ''}
+${incident.causes ? `**Causes:**\n${incident.causes}\n\n` : ''}
+${incident.steps_to_resolve ? `**Steps to Resolve:**\n${incident.steps_to_resolve}\n\n` : ''}
+
+Please provide a clear executive summary that synthesizes this information.`;
+
+    // Combine system and user messages into a single prompt
+    const fullPrompt = `${systemPrompt}\n\n${userMessage}`;
+
+    const aiResponse = await aiService.generateCompletion(fullPrompt, 2048);
+
+    res.json({ 
+      summary: aiResponse.text,
+      hasData: true,
+      generatedAt: new Date().toISOString()
+    });
+
+  } catch (error) {
+    console.error('Error generating incident summary:', error);
+    res.status(500).json({ error: 'Failed to generate incident summary' });
+  }
+});
+
 module.exports = router;

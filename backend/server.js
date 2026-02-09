@@ -35,6 +35,7 @@ const incidentsRouter = require('./routes/incidents');
 const runbooksRouter = require('./routes/runbooks');
 const usersRouter = require('./routes/users');
 const postmortemRouter = require('./routes/postmortem');
+const postmortemsRouter = require('./routes/postmortems');
 const knowledgeGraphRouter = require('./routes/knowledgeGraph');
 const serviceNowRouter = require('./routes/servicenow');
 
@@ -43,6 +44,7 @@ app.use('/api/incidents', incidentsRouter);
 app.use('/api/incidents/:id/postmortem', postmortemRouter);
 app.use('/api/incidents/:id/recommendations', knowledgeGraphRouter);
 app.use('/api/runbooks', runbooksRouter);
+app.use('/api/postmortems', postmortemsRouter);
 app.use('/api/users', usersRouter);
 app.use('/api/knowledge-graph', knowledgeGraphRouter);
 app.use('/api/servicenow', serviceNowRouter);

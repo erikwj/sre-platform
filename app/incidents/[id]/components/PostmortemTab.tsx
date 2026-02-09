@@ -7,6 +7,7 @@ import { calculateDuration, useDebounce } from './postmortem/utils';
 import { InputField, TextAreaField, DateTimeField, CheckboxField, MultiSelectField, SectionCard } from './postmortem/FormFields';
 import { CausalAnalysisEditor } from './postmortem/CausalAnalysisEditor';
 import { AIChatbot } from './postmortem/AIChatbot';
+import { ConfirmationModal } from '@/app/components/ConfirmationModal';
 
 type PostmortemTabProps = {
   incident: any;
@@ -21,6 +22,7 @@ export function PostmortemTab({ incident, onRefresh }: PostmortemTabProps) {
   const [saving, setSaving] = useState(false);
   const [hasPostmortem, setHasPostmortem] = useState(false);
   const [users, setUsers] = useState<Array<{ id: string; name: string; email: string }>>([]);
+  const [showPublishModal, setShowPublishModal] = useState(false);
 
   useEffect(() => {
     fetchPostmortem();
@@ -263,9 +265,6 @@ export function PostmortemTab({ incident, onRefresh }: PostmortemTabProps) {
   };
 
   const publishPostmortem = async () => {
-    if (!confirm('Publish this postmortem? It will be marked as final and shared with the team.')) {
-      return;
-    }
     await updateFieldImmediate('status', 'published');
   };
 
@@ -694,7 +693,7 @@ export function PostmortemTab({ incident, onRefresh }: PostmortemTabProps) {
         {postmortem.status !== 'published' && (
           <div className="flex gap-3">
             <button
-              onClick={publishPostmortem}
+              onClick={() => setShowPublishModal(true)}
               className="px-4 py-2 bg-status-success text-white rounded-lg hover:bg-green-600 transition-colors"
             >
               Publish Postmortem
@@ -705,6 +704,18 @@ export function PostmortemTab({ incident, onRefresh }: PostmortemTabProps) {
 
       {/* AI Chatbot */}
       <AIChatbot postmortem={postmortem} incidentId={incident.id} />
+
+      {/* Publish Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={showPublishModal}
+        onClose={() => setShowPublishModal(false)}
+        onConfirm={publishPostmortem}
+        title="Publish Postmortem"
+        message="Are you sure you want to publish this postmortem? Once published, it will be marked as final and shared with the team. This action will also generate knowledge graph embeddings for AI-powered recommendations."
+        confirmText="Publish"
+        cancelText="Cancel"
+        confirmButtonClass="bg-status-success hover:bg-green-600"
+      />
     </div>
   );
 }
