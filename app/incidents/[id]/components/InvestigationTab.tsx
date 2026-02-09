@@ -307,8 +307,8 @@ export function InvestigationTab({ incident, onRefresh }: InvestigationTabProps)
       <RACIMatrix incidentId={incident.id} />
 
       {/* Add Update Form */}
-      <div className="bg-white border border-border rounded-lg p-6">
-        <h3 className="text-sm font-semibold text-text-primary mb-3">
+      <div className="bg-white dark:bg-gray-800 border border-border dark:border-gray-700 rounded-lg p-6">
+        <h3 className="text-sm font-semibold text-text-primary dark:text-white mb-3">
           Share Update
         </h3>
         <div className="relative">
@@ -318,7 +318,7 @@ export function InvestigationTab({ incident, onRefresh }: InvestigationTabProps)
             onChange={handleTextChange}
             placeholder="Type / to reference services, people, or teams..."
             rows={4}
-            className="w-full px-4 py-3 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-status-info resize-none"
+            className="w-full px-4 py-3 border border-border dark:border-gray-600 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-status-info resize-none bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
             onKeyDown={(e) => {
               if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
                 submitUpdate();
@@ -331,7 +331,7 @@ export function InvestigationTab({ incident, onRefresh }: InvestigationTabProps)
           {/* Command Menu */}
           {showCommandMenu && (
             <div
-              className="fixed z-50 bg-white border border-border rounded-lg shadow-lg py-2 w-80"
+              className="fixed z-50 bg-white dark:bg-gray-800 border border-border dark:border-gray-700 rounded-lg shadow-lg py-2 w-80"
               style={{
                 top: `${commandPosition.top}px`,
                 left: `${commandPosition.left}px`,
@@ -339,59 +339,59 @@ export function InvestigationTab({ incident, onRefresh }: InvestigationTabProps)
             >
               {commandType === 'main' ? (
                 <>
-                  <div className="px-3 py-2 text-xs font-semibold text-text-secondary">
+                  <div className="px-3 py-2 text-xs font-semibold text-text-secondary dark:text-gray-400">
                     Insert reference
                   </div>
                   <button
                     onClick={() => selectCommandType('services')}
-                    className="w-full px-3 py-2 text-left text-sm hover:bg-background transition-colors"
+                    className="w-full px-3 py-2 text-left text-sm hover:bg-background dark:hover:bg-gray-700 transition-colors"
                   >
-                    <div className="font-medium text-text-primary">Services</div>
-                    <div className="text-xs text-text-secondary">
+                    <div className="font-medium text-text-primary dark:text-white">Services</div>
+                    <div className="text-xs text-text-secondary dark:text-gray-400">
                       Reference a service or API
                     </div>
                   </button>
                   <button
                     onClick={() => selectCommandType('users')}
-                    className="w-full px-3 py-2 text-left text-sm hover:bg-background transition-colors"
+                    className="w-full px-3 py-2 text-left text-sm hover:bg-background dark:hover:bg-gray-700 transition-colors"
                   >
-                    <div className="font-medium text-text-primary">Users</div>
-                    <div className="text-xs text-text-secondary">
+                    <div className="font-medium text-text-primary dark:text-white">Users</div>
+                    <div className="text-xs text-text-secondary dark:text-gray-400">
                       Mention a user from ServiceNow
                     </div>
                   </button>
                   <button
                     onClick={() => selectCommandType('groups')}
-                    className="w-full px-3 py-2 text-left text-sm hover:bg-background transition-colors"
+                    className="w-full px-3 py-2 text-left text-sm hover:bg-background dark:hover:bg-gray-700 transition-colors"
                   >
-                    <div className="font-medium text-text-primary">Groups</div>
-                    <div className="text-xs text-text-secondary">
+                    <div className="font-medium text-text-primary dark:text-white">Groups</div>
+                    <div className="text-xs text-text-secondary dark:text-gray-400">
                       Reference an assignment group
                     </div>
                   </button>
                 </>
               ) : commandType === 'services' ? (
                 <>
-                  <div className="px-3 py-2 border-b border-border">
+                  <div className="px-3 py-2 border-b border-border dark:border-gray-700">
                     <div className="relative">
-                      <Search className="absolute left-2 top-2 w-4 h-4 text-text-secondary" />
+                      <Search className="absolute left-2 top-2 w-4 h-4 text-text-secondary dark:text-gray-400" />
                       <input
                         type="text"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         placeholder="Search services..."
-                        className="w-full pl-8 pr-3 py-1.5 text-sm border border-border rounded focus:outline-none focus:ring-2 focus:ring-status-info"
+                        className="w-full pl-8 pr-3 py-1.5 text-sm border border-border dark:border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-status-info bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
                         autoFocus
                       />
                     </div>
                   </div>
                   <div className="max-h-64 overflow-y-auto">
                     {loadingRunbooks ? (
-                      <div className="px-3 py-4 text-center text-sm text-text-secondary">
+                      <div className="px-3 py-4 text-center text-sm text-text-secondary dark:text-gray-400">
                         Loading services...
                       </div>
                     ) : runbooks.length === 0 ? (
-                      <div className="px-3 py-4 text-center text-sm text-text-secondary">
+                      <div className="px-3 py-4 text-center text-sm text-text-secondary dark:text-gray-400">
                         No services found
                       </div>
                     ) : (
@@ -399,19 +399,19 @@ export function InvestigationTab({ incident, onRefresh }: InvestigationTabProps)
                         <button
                           key={runbook.id}
                           onClick={() => insertService(runbook)}
-                          className="w-full px-3 py-2 text-left hover:bg-background transition-colors"
+                          className="w-full px-3 py-2 text-left hover:bg-background dark:hover:bg-gray-700 transition-colors"
                         >
-                          <div className="font-medium text-sm text-text-primary">
+                          <div className="font-medium text-sm text-text-primary dark:text-white">
                             {runbook.serviceName}
                           </div>
-                          <div className="text-xs text-text-secondary">
+                          <div className="text-xs text-text-secondary dark:text-gray-400">
                             {runbook.teamName} • {runbook.description.substring(0, 60)}...
                           </div>
                         </button>
                       ))
                     )}
                   </div>
-                  <div className="px-3 py-2 border-t border-border">
+                  <div className="px-3 py-2 border-t border-border dark:border-gray-700">
                     <button
                       onClick={() => {
                         setCommandType('main');
@@ -425,30 +425,30 @@ export function InvestigationTab({ incident, onRefresh }: InvestigationTabProps)
                 </>
               ) : commandType === 'users' ? (
                 <>
-                  <div className="px-3 py-2 border-b border-border">
+                  <div className="px-3 py-2 border-b border-border dark:border-gray-700">
                     <div className="relative">
-                      <Search className="absolute left-2 top-2 w-4 h-4 text-text-secondary" />
+                      <Search className="absolute left-2 top-2 w-4 h-4 text-text-secondary dark:text-gray-400" />
                       <input
                         type="text"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         placeholder="Search users... (min 2 chars)"
-                        className="w-full pl-8 pr-3 py-1.5 text-sm border border-border rounded focus:outline-none focus:ring-2 focus:ring-status-info"
+                        className="w-full pl-8 pr-3 py-1.5 text-sm border border-border dark:border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-status-info bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
                         autoFocus
                       />
                     </div>
                   </div>
                   <div className="max-h-64 overflow-y-auto">
                     {loadingUsers ? (
-                      <div className="px-3 py-4 text-center text-sm text-text-secondary">
+                      <div className="px-3 py-4 text-center text-sm text-text-secondary dark:text-gray-400">
                         Loading users...
                       </div>
                     ) : searchQuery.length < 2 ? (
-                      <div className="px-3 py-4 text-center text-sm text-text-secondary">
+                      <div className="px-3 py-4 text-center text-sm text-text-secondary dark:text-gray-400">
                         Type at least 2 characters to search
                       </div>
                     ) : users.length === 0 ? (
-                      <div className="px-3 py-4 text-center text-sm text-text-secondary">
+                      <div className="px-3 py-4 text-center text-sm text-text-secondary dark:text-gray-400">
                         No users found
                       </div>
                     ) : (
@@ -456,19 +456,19 @@ export function InvestigationTab({ incident, onRefresh }: InvestigationTabProps)
                         <button
                           key={user.sys_id}
                           onClick={() => insertUser(user)}
-                          className="w-full px-3 py-2 text-left hover:bg-background transition-colors"
+                          className="w-full px-3 py-2 text-left hover:bg-background dark:hover:bg-gray-700 transition-colors"
                         >
-                          <div className="font-medium text-sm text-text-primary">
+                          <div className="font-medium text-sm text-text-primary dark:text-white">
                             {user.name}
                           </div>
-                          <div className="text-xs text-text-secondary">
+                          <div className="text-xs text-text-secondary dark:text-gray-400">
                             {user.email} {user.title && `• ${user.title}`}
                           </div>
                         </button>
                       ))
                     )}
                   </div>
-                  <div className="px-3 py-2 border-t border-border">
+                  <div className="px-3 py-2 border-t border-border dark:border-gray-700">
                     <button
                       onClick={() => {
                         setCommandType('main');
@@ -482,18 +482,18 @@ export function InvestigationTab({ incident, onRefresh }: InvestigationTabProps)
                 </>
               ) : commandType === 'groups' ? (
                 <>
-                  <div className="px-3 py-2 border-b border-border">
-                    <div className="text-xs font-semibold text-text-secondary">
+                  <div className="px-3 py-2 border-b border-border dark:border-gray-700">
+                    <div className="text-xs font-semibold text-text-secondary dark:text-gray-400">
                       Assignment Groups
                     </div>
                   </div>
                   <div className="max-h-64 overflow-y-auto">
                     {loadingGroups ? (
-                      <div className="px-3 py-4 text-center text-sm text-text-secondary">
+                      <div className="px-3 py-4 text-center text-sm text-text-secondary dark:text-gray-400">
                         Loading groups...
                       </div>
                     ) : groups.length === 0 ? (
-                      <div className="px-3 py-4 text-center text-sm text-text-secondary">
+                      <div className="px-3 py-4 text-center text-sm text-text-secondary dark:text-gray-400">
                         No groups found
                       </div>
                     ) : (
@@ -501,13 +501,13 @@ export function InvestigationTab({ incident, onRefresh }: InvestigationTabProps)
                         <button
                           key={group.sys_id}
                           onClick={() => insertGroup(group)}
-                          className="w-full px-3 py-2 text-left hover:bg-background transition-colors"
+                          className="w-full px-3 py-2 text-left hover:bg-background dark:hover:bg-gray-700 transition-colors"
                         >
-                          <div className="font-medium text-sm text-text-primary">
+                          <div className="font-medium text-sm text-text-primary dark:text-white">
                             {group.name}
                           </div>
                           {group.description && (
-                            <div className="text-xs text-text-secondary">
+                            <div className="text-xs text-text-secondary dark:text-gray-400">
                               {group.description.substring(0, 60)}...
                             </div>
                           )}
@@ -515,7 +515,7 @@ export function InvestigationTab({ incident, onRefresh }: InvestigationTabProps)
                       ))
                     )}
                   </div>
-                  <div className="px-3 py-2 border-t border-border">
+                  <div className="px-3 py-2 border-t border-border dark:border-gray-700">
                     <button
                       onClick={() => {
                         setCommandType('main');
@@ -532,7 +532,7 @@ export function InvestigationTab({ incident, onRefresh }: InvestigationTabProps)
           )}
 
           <div className="flex items-center justify-between mt-3">
-            <p className="text-xs text-text-secondary">
+            <p className="text-xs text-text-secondary dark:text-gray-400">
               Press ⌘+Enter to submit
             </p>
             <button
@@ -548,9 +548,9 @@ export function InvestigationTab({ incident, onRefresh }: InvestigationTabProps)
       </div>
 
       {/* Timeline */}
-      <div className="bg-white border border-border rounded-lg p-6">
+      <div className="bg-white dark:bg-gray-800 border border-border dark:border-gray-700 rounded-lg p-6">
         <div className="flex items-center justify-between mb-6">
-          <h3 className="text-sm font-semibold text-text-primary">
+          <h3 className="text-sm font-semibold text-text-primary dark:text-white">
             Activity Timeline (to and from SNOW)
           </h3>
         </div>
@@ -560,11 +560,11 @@ export function InvestigationTab({ incident, onRefresh }: InvestigationTabProps)
             <div key={date}>
               {/* Date Separator */}
               <div className="flex items-center gap-3 mb-4">
-                <div className="h-px bg-border flex-1" />
-                <span className="text-xs font-medium text-text-secondary">
+                <div className="h-px bg-border dark:bg-gray-700 flex-1" />
+                <span className="text-xs font-medium text-text-secondary dark:text-gray-400">
                   {date}
                 </span>
-                <div className="h-px bg-border flex-1" />
+                <div className="h-px bg-border dark:bg-gray-700 flex-1" />
               </div>
 
               {/* Events for this date */}
@@ -580,7 +580,7 @@ export function InvestigationTab({ incident, onRefresh }: InvestigationTabProps)
                     <div key={event.id} className="flex gap-4">
                       {/* Time */}
                       <div className="w-16 flex-shrink-0 text-right">
-                        <span className="text-xs font-mono text-text-secondary">
+                        <span className="text-xs font-mono text-text-secondary dark:text-gray-400">
                           {formatTimestamp(event.createdAt)}
                         </span>
                       </div>
@@ -599,7 +599,7 @@ export function InvestigationTab({ incident, onRefresh }: InvestigationTabProps)
                         <div className="flex items-start justify-between">
                           <div className="flex-1">
                             <div 
-                              className="text-sm text-text-primary prose prose-sm max-w-none"
+                              className="text-sm text-text-primary dark:text-white prose prose-sm max-w-none dark:prose-invert"
                               dangerouslySetInnerHTML={{ 
                                 __html: event.description.replace(
                                   /\[([^\]]+)\]\(([^)]+)\)/g,
@@ -610,33 +610,33 @@ export function InvestigationTab({ incident, onRefresh }: InvestigationTabProps)
                             <div className="flex items-center gap-2 mt-1">
                               {event.user && event.user.name ? (
                                 <>
-                                  <div className="w-5 h-5 bg-accent-purple/10 rounded-full flex items-center justify-center">
-                                    <span className="text-xs font-medium text-accent-purple">
+                                  <div className="w-5 h-5 bg-accent-purple/10 dark:bg-purple-900/30 rounded-full flex items-center justify-center">
+                                    <span className="text-xs font-medium text-accent-purple dark:text-purple-400">
                                       {event.user.name.charAt(0)}
                                     </span>
                                   </div>
-                                  <span className="text-xs text-text-secondary">
+                                  <span className="text-xs text-text-secondary dark:text-gray-400">
                                     {event.user.name}
                                   </span>
                                 </>
                               ) : event.metadata?.createdBy ? (
                                 <>
-                                  <div className="w-5 h-5 bg-blue-100 rounded-full flex items-center justify-center">
-                                    <span className="text-xs font-medium text-blue-600">
+                                  <div className="w-5 h-5 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center">
+                                    <span className="text-xs font-medium text-blue-600 dark:text-blue-400">
                                       S
                                     </span>
                                   </div>
-                                  <span className="text-xs text-text-secondary">
+                                  <span className="text-xs text-text-secondary dark:text-gray-400">
                                     {event.metadata.createdBy} (ServiceNow)
                                   </span>
                                 </>
                               ) : null}
                               {event.metadata?.source === 'servicenow' && (
-                                <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded">
+                                <span className="text-xs px-2 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded">
                                   {event.metadata.label || 'ServiceNow'}
                                 </span>
                               )}
-                              <span className="text-xs text-text-secondary">
+                              <span className="text-xs text-text-secondary dark:text-gray-400">
                                 via @incident
                               </span>
                             </div>
@@ -652,7 +652,7 @@ export function InvestigationTab({ incident, onRefresh }: InvestigationTabProps)
 
           {incident.timelineEvents.length === 0 && (
             <div className="text-center py-8">
-              <p className="text-sm text-text-secondary">
+              <p className="text-sm text-text-secondary dark:text-gray-400">
                 No timeline events yet. Share an update to get started.
               </p>
             </div>

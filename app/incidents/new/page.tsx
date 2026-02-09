@@ -7,6 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import Link from 'next/link';
 import { AlertCircle, X, Loader2 } from 'lucide-react';
+import { ThemeToggle } from '@/app/components/ThemeToggle';
 
 const incidentSchema = z.object({
   incidentNumber: z.string().min(1, 'Incident number is required'),
@@ -118,7 +119,7 @@ export default function NewIncidentPage() {
   return (
     <div className="min-h-screen bg-background dark:bg-gray-900">
       {/* Navigation */}
-      <nav className="border-b border-border dark:border-gray-700 bg-white dark:bg-gray-800">
+      <nav className="sticky top-0 z-50 border-b border-border dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm">
         <div className="max-w-content mx-auto px-8 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-8">
@@ -133,12 +134,28 @@ export default function NewIncidentPage() {
                   Incidents
                 </Link>
                 <Link
+                  href="/postmortems"
+                  className="text-sm text-text-secondary dark:text-gray-300 hover:text-text-primary dark:hover:text-white transition-colors"
+                >
+                  Postmortems
+                </Link>
+                <Link
                   href="/runbooks"
                   className="text-sm text-text-secondary dark:text-gray-300 hover:text-text-primary dark:hover:text-white transition-colors"
                 >
                   Runbooks
                 </Link>
               </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <ThemeToggle />
+              <Link
+                href="/incidents/new"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white font-semibold rounded-lg hover:bg-red-700 transition-colors shadow-sm"
+              >
+                <AlertCircle className="w-4 h-4" />
+                Declare Major Incident
+              </Link>
             </div>
           </div>
         </div>
